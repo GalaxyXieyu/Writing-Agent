@@ -1,0 +1,2 @@
+from templates.ai_templates.template_refresh import template_refresh_prompt
+from templates.ai_templates.template_generate import template_generate_prompt

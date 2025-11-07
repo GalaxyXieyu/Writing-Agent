@@ -1,0 +1,42 @@
+import json
+import re
+import warnings
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI
+from templates.ai_templates.paragraph_generate import paragraph_generate_prompt
+
+# 初始化大模型
+# headers = {
+#     "X-CheckSum": "ef620a8bd9dbe2f67aa2c345b05ded4b",
+#     "X-CurTime": "1718784683",
+#     "X-Server-Param": "eyJhcHBpZCI6InBvYy1xMTRiIiwiY3NpZCI6InBvYy1xMTRiMTcxODc4NDY4NDE2NDAwMDAwMDAwMDAwY2U0MGFmNzM2N2IzZmYwYmJjNDIzYzViZjUxOWNlMzUifQ==",
+#     "Content-Type": "application/json;charset=utf-8"
+# }
+
+# llm = ChatOpenAI(
+#     temperature=0.2,
+#     model="Qwen1.5-14B-Chat",
+#     openai_api_base="https://api.siliconflow.cn/v1",
+#     default_headers=headers
+# )
+
+def build_paragraph_chain(llm: ChatOpenAI):
+    """构造段落生成链，外部注入 llm。"""
+    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | paragraph_generate_prompt  | llm
+
+# headers = {
+#     "accept": "application/json",
+#     "content-type": "application/json",
+#     "Authorization": "Bearer sk-nmyyoncsmaagafmvjmbpyaxbeewtwqaiycitmhtomjzlwbsw"
+# }
+
+# llm = ChatOpenAI(
+#     temperature=0.2,
+#     model="Qwen/Qwen2.5-14B-Instruct",
+#     openai_api_base="https://api.siliconflow.cn/v1",
+#     default_headers=headers
+# )
+
+
+warnings.filterwarnings('ignore')
+

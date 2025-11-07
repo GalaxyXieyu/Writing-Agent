@@ -1,0 +1,32 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from api.routes.api import api_router
+from initialization import init_database
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+
+app = FastAPI()
+# 配置跨域中间件，不限制任何来源
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 包含API路由
+app.include_router(api_router, prefix="/api")
+
+
+@app.on_event("startup")
+async def on_startup():
+    # 启动时初始化数据库表（幂等）
+    await init_database()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=29847)

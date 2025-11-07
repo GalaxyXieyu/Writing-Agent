@@ -1,0 +1,135 @@
+name: Writing-Agent
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "30306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: tianshu
+      MYSQL_USER: gmccai
+      MYSQL_PASSWORD: 123456
+      TZ: Asia/Shanghai
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./mysql_init:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    networks:
+      - writingagent-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "30637:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - writingagent-network
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+    container_name: api
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 29847
+    volumes:
+      - ../backend:/app
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=gmccai
+      - DB_PASSWORD=123456
+      - DB_NAME=tianshu
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "29847:29847"
+    networks:
+      - writingagent-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: docker.m.daocloud.io/library/node:18-alpine
+    container_name: frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "30080:80"
+    networks:
+      - writingagent-network
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+    container_name: worker
+    restart: always
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=4 -E
+    volumes:
+      - ../backend:/app
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=gmccai
+      - DB_PASSWORD=123456
+      - DB_NAME=tianshu
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - writingagent-network
+
+  flower:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+    container_name: flower
+    restart: always
+    command: celery -A tasks.celery_app flower --port=5555
+    ports:
+      - "30555:5555"
+    volumes:
+      - ../backend:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    depends_on:
+      - redis
+      - worker
+    networks:
+      - writingagent-network
+
+volumes:
+  redis_data:
+
+networks:
+  writingagent-network:
+    driver: bridge
+

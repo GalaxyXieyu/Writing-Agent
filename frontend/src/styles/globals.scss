@@ -1,0 +1,84 @@
+@mixin status-bar {
+	height: var(--status-bar-height);
+	width: 100%;
+}
+// 沉浸式状态栏
+.status-bar {
+	@include status-bar();
+}
+
+// loading状态动效
+.load-progress-spinner {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 2000;
+	display: block;
+	color: #6476ff;
+}
+
+.load-progress-spinner::after {
+	content: '';
+	display: block;
+	width: 50rpx;
+	height: 50rpx;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	border: solid 4upx transparent;
+	border-top-color: inherit;
+	border-left-color: inherit;
+	border-radius: 50%;
+	-webkit-animation: load-progress-spinner 0.4s linear infinite;
+	animation: load-progress-spinner 0.4s linear infinite;
+}
+
+@-webkit-keyframes load-progress-spinner {
+	0% {
+		-webkit-transform: rotate(0);
+		transform: rotate(0);
+	}
+
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes load-progress-spinner {
+	0% {
+		-webkit-transform: rotate(0);
+		transform: rotate(0);
+	}
+
+	100% {
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
+	}
+}
+
+// 单行文字省略
+.line-clamp {
+	word-wrap: break-word;
+	word-break: break-all;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+// 两行文字省略
+.multi-line-clamp {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	word-break: break-all;
+}
+
+// ElMessageBox按钮样式修改
+::v-deep .my-confirmButtonClass-class {
+	background-color: #5571FF!important;
+	border-color: #5571FF!important;
+	//color: #5571FF !important;
+}

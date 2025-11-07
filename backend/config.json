@@ -1,0 +1,18 @@
+{
+  "ai": {
+    "api_base": "http://8.134.195.230:23435/v1",
+    "key": "sk-0rnrrSH0OsiaWCiv6b37C1E4E60c4b9394325001Ec19A197",
+    "model": "qwen2.5-72b-instruct-awq",
+    "temperature": 0.2
+  },
+  "redis": {
+    "host": "localhost",
+    "port": "30637",
+    "db": 0
+  },
+  "datasource": {
+    "url": "36.137.180.157:3306/tianshu_dev",
+    "username": "gmccai",
+    "password": "LPDY%21iLrUd8irpGp"
+  }
+}
