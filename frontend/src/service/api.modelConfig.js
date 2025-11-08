@@ -1,6 +1,6 @@
 import { http } from './request';
 
-const VITE_API_BASE_PREFIX = 'http://localhost:29847';
+const VITE_API_BASE_PREFIX = import.meta.env.VITE_BASE_API_HOST || 'http://localhost:29847';
 const API_PREFIX = '/api';
 const BASE = `${VITE_API_BASE_PREFIX}${API_PREFIX}/model-config`;
 

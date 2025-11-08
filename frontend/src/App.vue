@@ -1,56 +1,48 @@
 <script setup>
-import { onLaunch, onShow, onHide } from '@dcloudio/uni-app';
-import { useRouterStore,useUserStore } from '@/store';
-// 自定义滚动条
+import { onMounted } from 'vue';
+import { useRouterStore, useUserStore } from '@/store';
+import { useRoute } from 'vue-router';
 import 'simplebar-vue/dist/simplebar.min.css';
 
-/**
- * @description: 根据设备端重定向到移动端或WEB端的首页
- * @return {void}
- */
-const redirectHost = () => {
-  location.href = `https://tianshu.fits.com.cn:${import.meta.env.VITE_FE_PORT}/web/#/`;
+const userStore = useUserStore();
+const routerStore = useRouterStore();
+const route = useRoute();
 
-};
-
-onLaunch(async (options) => {
-	const userStore = useUserStore();
-
-	// 部分功能需要使用到用户唯一Id记录用户使用情况
-  userStore.setProfile({ name: "张三", mobile: "12345678910" });
-	const routerStore = useRouterStore();
+onMounted(async () => {
+	// 根据当前路由设置当前路由
 	const routeMap = {
-    'pages/web-solution-assistant/index': 'solution',
+		'/web-solution-assistant': 'solution',
+		'/history': 'solution',
+		'/model-config': 'model-config',
 	};
-	routerStore.setCurrentRoute(routeMap[options.path]);
-
-});
-onShow(() => {
-	console.log('App Show');
-});
-onHide(() => {
-	console.log('App Hide');
+	const routeName = routeMap[route.path] || 'solution';
+	routerStore.setCurrentRoute(routeName);
 });
 </script>
 
+<template>
+	<router-view />
+</template>
+
 <style lang="scss">
 /*每个页面公共css */
-@import 'styles/globals.scss';
+@use 'styles/globals.scss';
 
-//.uni-app--showleftwindow {
-//	.uni-left-window {
-//		height: 100vh;
-//	}
-//}
-
-body,
-uni-page-body {
+/* 只在非登录页面应用背景色，避免覆盖登录页面的 Tailwind 样式 */
+body:not(.login-page) {
 	background-color: #f9fbff;
+	overflow: hidden;
+	height: 100vh;
 }
 
-uni-main {
-	overflow: auto;
-	height: 100%;
+html {
+	overflow: hidden;
+	height: 100vh;
+}
+
+#app {
+	height: 100vh;
+	overflow: hidden;
 }
 
 :deep(.simplebar-scrollbar) {
@@ -67,15 +59,22 @@ uni-main {
 	scroll-behavior: smooth;
 }
 
-/* #ifdef H5-WEB || H5-WEB-TEST */
 ::-webkit-scrollbar {
 	width: 5px;
 	height: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-	background-color: #00ccff;
+	background-color: #cbd5e1;
 	border-radius: 5px;
 }
-/* #endif */
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: #94a3b8;
+}
+
+::-webkit-scrollbar-track {
+	background-color: #f1f5f9;
+	border-radius: 5px;
+}
 </style>

@@ -11,8 +11,8 @@
     "db": 0
   },
   "datasource": {
-    "url": "36.137.180.157:3306/tianshu_dev",
+    "url": "127.0.0.1:30306/tianshu",
     "username": "gmccai",
-    "password": "LPDY%21iLrUd8irpGp"
+    "password": "123456"
   }
 }

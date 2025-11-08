@@ -1,135 +1,191 @@
 <template>
-  <div>
-    <el-form>
-      <div v-for="(item, index) in titleData" :key="index" style="margin-bottom: 1vh;background-color: #F5F5F5;border-radius: 10px;padding-bottom: 1vh;">
-        <el-row>
-          <el-col :span="17" class="first-tag">
-            <el-button v-if="!item.isFirstTitleClose" type="text" style="color: black;width: 5%;border: none" size="small" plain @click="item.isFirstTitleClose = true">
-              <el-icon size="12"><ArrowUp /></el-icon>
-            </el-button>
-            <el-button v-else type="text" style="color: black;width: 5%;border: none" size="small" plain @click="item.isFirstTitleClose = false">
-              <el-icon size="12"><ArrowDown /></el-icon>
-            </el-button>
-            <el-tag type="text" style="border-radius: 6px;background-color: #E5E7F6;color: #555">一级标题</el-tag>
-          </el-col>
-          <el-col :span="6">
-            <el-button type="text" class="first-button" size="small" plain @click="addSecondLevelTitle(item)">
-<!--              <el-icon size="18" color="#555"><Plus/></el-icon>-->
-              <img src="../iconPng/添加.png" alt="PNG Icon" class="file-icon" />
-            </el-button>
-            <el-button type="text" class="first-button" size="small" plain @click="deleteFirstLevelTitle(item)">
-<!--              <el-icon size="18" color="#555"><DeleteFilled /></el-icon>-->
-              <img src="../iconPng/删除.png" alt="PNG Icon" class="file-icon" />
-            </el-button>
-          </el-col>
-        </el-row>
-        <div class="first-dash-left-border" v-show="!item.isFirstTitleClose">
-          <el-row>
-            <el-col :span="24">
-              <el-input class="first-input" maxlength="100"
-                        type="textarea"
-                        autosize
-                        resize="none"
-                        v-model="item.titleName" placeholder="输入一级标题" show-word-limit/>
-<!--              <p class="text-length-p">{{ item.titleName?item.titleName.length:0 }}/100</p>-->
-            </el-col>
-            <el-col :span="24">
-              <el-input class="first-input"
-                        type="textarea"
-                        autosize
-                        resize="none"
-                        :border="false" maxlength="300" v-model="item.writingRequirement" placeholder="输入写作要求" show-word-limit/>
-<!--              <p class="text-length-p">{{ item.writingRequirement?item.writingRequirement.length:0 }}/300</p>-->
-            </el-col>
-          </el-row>
-          <div v-for="(childrenItem, childrenIndex) in item.children" :key="childrenIndex">
-            <div class="second-dash-left-border">
-              <el-row>
-                <el-col :span="17">
-                  <el-tag class="second-tag" type="text" style="border-radius: 6px;background-color: #E5E7F6;color: #555">二级标题</el-tag>
-                </el-col>
-                <el-col :span="6">
-                    <el-button type="text" class="second-button-add" size="small" plain @click="addThirdLevelTitle(item, childrenItem)">
-<!--                        <el-icon size="18" color="#555"><Plus /></el-icon>-->
-                      <img src="../iconPng/添加.png" alt="PNG Icon" class="file-icon" />
-                    </el-button>
-                  <el-button type="text" class="second-button" size="small" plain
-                             @click="deleteSecondLevelTitle(item,childrenItem)">
-<!--                    <el-icon size="18" color="#555"><DeleteFilled /></el-icon>-->
-                    <img src="../iconPng/删除.png" alt="PNG Icon" class="file-icon" />
-                  </el-button>
-                </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="24">
-                  <el-input class="second-input"
-                            type="textarea"
-                            autosize
-                            resize="none"
-                            maxlength="100" v-model="childrenItem.titleName" placeholder="输入二级标题" show-word-limit/>
-<!--                  <p class="text-length-p">{{ childrenItem.titleName?childrenItem.titleName.length:0 }}/100</p>-->
-                </el-col>
-                <el-col :span="24">
-                  <el-input class="second-input"
-                            type="textarea"
-                            autosize
-                            resize="none"
-                            maxlength="300" v-model="childrenItem.writingRequirement" placeholder="输入写作要求" show-word-limit/>
-<!--                  <p class="text-length-p">{{ childrenItem.writingRequirement?childrenItem.writingRequirement.length:0 }}/300</p>-->
-                </el-col>
-              </el-row>
-                <div v-for="(thirdLevelItem, thirdLevelIndex) in childrenItem.children" :key="thirdLevelIndex">
-                    <div class="third-dash-left-border">
-                        <el-row>
-                            <el-col :span="17">
-                                <el-tag class="third-tag" type="text" style="border-radius: 6px;background-color: #E5E7F6;color: #555">三级标题</el-tag>
-                            </el-col>
-                            <el-col :span="6">
-                                <el-button type="text" class="third-button" size="small" plain @click="deleteThirdLevelTitle(item, childrenItem, thirdLevelItem)">
-<!--                                    <el-icon size="18" color="#555"><DeleteFilled /></el-icon>-->
-                                  <img src="../iconPng/删除.png" alt="PNG Icon" class="file-icon" />
-                                </el-button>
-                            </el-col>
-                        </el-row>
-                        <el-row>
-                            <el-col :span="24">
-                                <el-input class="third-input"
-                                          type="textarea"
-                                          autosize
-                                          resize="none"
-                                          maxlength="100" v-model="thirdLevelItem.titleName" placeholder="输入三级标题" show-word-limit/>
-<!--                                <p class="text-length-p">{{ thirdLevelItem.titleName?thirdLevelItem.titleName.length:0 }}/100</p>-->
-                            </el-col>
-                            <el-col :span="24">
-                                <el-input class="third-input"
-                                          maxlength="300" type="textarea" autosize
-                                          resize="none"
-                                          v-model="thirdLevelItem.writingRequirement" placeholder="输入写作要求" show-word-limit/>
-<!--                                <p class="text-length-p">{{ thirdLevelItem.writingRequirement?thirdLevelItem.writingRequirement.length:0 }}/300</p>-->
-                            </el-col>
-                        </el-row>
-                    </div>
+  <div class="space-y-4">
+    <div v-for="(item, index) in titleData" :key="index" class="group rounded-lg border border-border bg-card shadow-sm transition-all hover:shadow-md">
+      <!-- 标题头部 -->
+      <div class="flex items-center justify-between border-b border-border bg-muted/50 px-5 py-3.5">
+        <div class="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            @click="item.isFirstTitleClose = !item.isFirstTitleClose" 
+            class="h-7 w-7 rounded-md hover:bg-background"
+          >
+            <svg v-if="!item.isFirstTitleClose" class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+            </svg>
+            <svg v-else class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </Button>
+          <Badge variant="secondary" class="bg-primary/10 text-primary font-medium px-2.5 py-0.5">一级标题</Badge>
+        </div>
+        <div class="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            @click="addSecondLevelTitle(item)" 
+            class="h-7 w-7 rounded-md hover:bg-background"
+            title="添加二级标题"
+          >
+            <img src="../iconPng/添加.png" alt="添加" class="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            @click="deleteFirstLevelTitle(item)" 
+            class="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive"
+            title="删除一级标题"
+          >
+            <img src="../iconPng/删除.png" alt="删除" class="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      
+      <!-- 内容区域 -->
+      <div v-show="!item.isFirstTitleClose" class="p-5 space-y-5">
+        <!-- 一级标题输入 -->
+        <div class="space-y-2.5">
+          <Label class="text-responsive-sm font-medium text-foreground">标题名称</Label>
+          <Textarea
+            v-model="item.titleName"
+            placeholder="输入一级标题"
+            :maxlength="100"
+            class="min-h-[90px] resize-none w-full"
+          />
+          <p class="text-right text-responsive-xs text-muted-foreground">{{ item.titleName?.length || 0 }}/100</p>
+        </div>
+        
+        <!-- 写作要求输入 -->
+        <div class="space-y-2.5">
+          <Label class="text-responsive-sm font-medium text-foreground">写作要求</Label>
+          <Textarea
+            v-model="item.writingRequirement"
+            placeholder="输入写作要求"
+            :maxlength="300"
+            class="min-h-[120px] resize-none w-full"
+          />
+          <p class="text-right text-responsive-xs text-muted-foreground">{{ item.writingRequirement?.length || 0 }}/300</p>
+        </div>
+        
+        <!-- 二级标题列表 -->
+        <div v-if="item.children && item.children.length > 0" class="mt-5 space-y-4">
+          <div 
+            v-for="(childrenItem, childrenIndex) in item.children" 
+            :key="childrenIndex" 
+            class="rounded-md border border-border bg-muted/30 p-4"
+          >
+            <div class="mb-4 flex items-center justify-between">
+              <Badge variant="secondary" class="bg-secondary text-secondary-foreground font-medium px-2.5 py-0.5 text-responsive-sm">二级标题</Badge>
+              <div class="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  @click="addThirdLevelTitle(item, childrenItem)" 
+                  class="h-6 w-6 rounded-md hover:bg-background"
+                  title="添加三级标题"
+                >
+                  <img src="../iconPng/添加.png" alt="添加" class="h-3.5 w-3.5" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  @click="deleteSecondLevelTitle(item, childrenItem)" 
+                  class="h-6 w-6 rounded-md hover:bg-destructive/10 hover:text-destructive"
+                  title="删除二级标题"
+                >
+                  <img src="../iconPng/删除.png" alt="删除" class="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div class="space-y-2.5">
+                <Label class="text-responsive-xs font-medium text-foreground">标题名称</Label>
+                <Textarea
+                  v-model="childrenItem.titleName"
+                  placeholder="输入二级标题"
+                  :maxlength="100"
+                  class="min-h-[80px] resize-none w-full"
+                />
+                <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.titleName?.length || 0 }}/100</p>
+              </div>
+              <div class="space-y-2.5">
+                <Label class="text-responsive-xs font-medium text-foreground">写作要求</Label>
+                <Textarea
+                  v-model="childrenItem.writingRequirement"
+                  placeholder="输入写作要求"
+                  :maxlength="300"
+                  class="min-h-[100px] resize-none w-full"
+                />
+                <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.writingRequirement?.length || 0 }}/300</p>
+              </div>
+            </div>
+            
+            <!-- 三级标题列表 -->
+            <div v-if="childrenItem.children && childrenItem.children.length > 0" class="mt-4 space-y-3">
+              <div 
+                v-for="(thirdLevelItem, thirdLevelIndex) in childrenItem.children" 
+                :key="thirdLevelIndex" 
+                class="rounded-md border border-border bg-background p-4"
+              >
+                <div class="mb-3 flex items-center justify-between">
+                  <Badge variant="outline" class="font-medium px-2 py-0.5 text-responsive-xs">三级标题</Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon-sm" 
+                    @click="deleteThirdLevelTitle(item, childrenItem, thirdLevelItem)" 
+                    class="h-6 w-6 rounded-md hover:bg-destructive/10 hover:text-destructive"
+                    title="删除三级标题"
+                  >
+                    <img src="../iconPng/删除.png" alt="删除" class="h-3 w-3" />
+                  </Button>
                 </div>
+                <div class="space-y-3">
+                  <div class="space-y-2">
+                    <Label class="text-responsive-xs font-medium text-foreground">标题名称</Label>
+                    <Textarea
+                      v-model="thirdLevelItem.titleName"
+                      placeholder="输入三级标题"
+                      :maxlength="100"
+                      class="min-h-[70px] resize-none w-full text-responsive-sm"
+                    />
+                    <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.titleName?.length || 0 }}/100</p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label class="text-responsive-xs font-medium text-foreground">写作要求</Label>
+                    <Textarea
+                      v-model="thirdLevelItem.writingRequirement"
+                      placeholder="输入写作要求"
+                      :maxlength="300"
+                      class="min-h-[80px] resize-none w-full text-responsive-sm"
+                    />
+                    <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.writingRequirement?.length || 0 }}/300</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="firstLevelTitleAdd">
-        <el-button type="text" size="small" plain @click="addFirstLevelTitle"
-                   style="font-weight: bold;color: #504c4c;font-size: 0.96rem">
-          <el-icon size="18" style="margin-right:5px;" color="#555"><Plus /></el-icon>添加一级标题</el-button>
-      </div>
-
-
-    </el-form>
+    </div>
+    
+    <!-- 添加按钮 -->
+    <div class="rounded-lg border-2 border-dashed border-border bg-muted/30 p-5 text-center transition-colors hover:border-primary/50 hover:bg-muted/50">
+      <Button variant="ghost" @click="addFirstLevelTitle" class="font-semibold text-responsive-base text-foreground">
+        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        添加一级标题
+      </Button>
+    </div>
   </div>
 </template>
 
 <script setup>
-
-
-import {DeleteFilled,Plus,ArrowUp,ArrowDown } from '@element-plus/icons-vue'
 import { ref } from 'vue';
+import Button from '@/components/ui/Button.vue';
+import Textarea from '@/components/ui/Textarea.vue';
+import Badge from '@/components/ui/Badge.vue';
+import Label from '@/components/ui/Label.vue';
 // 使用ref创建响应式状态，默认为false，表示按钮默认不显示
 const isDeleteButtonFocus = ref(true);
 const props = defineProps({
@@ -232,101 +288,5 @@ const deleteThirdLevelTitle = (item, childrenItem, subChildrenItem) => {
 </script>
 
 <style scoped>
-
-/* 一级标题tag样式 */
-.first-tag{
-  margin-left: 3%;
-  margin-top: 1vh
-
-}
-/* 一级标题input样式 */
-.first-input{
-  width: 94%;
-  margin-left: 3%;
-  margin-top: 5px;
-}
-.first-button{
-  width: 20px;
-  margin-top: 1vh;
-  margin-right: 5px;
-  text-align: right;
-  float: right;
-  /*border: 1px solid red;*/
-}
-/* 二级标题tag样式 */
-.second-tag{
-  margin-left: 3%;
-}
-/* 二级标题input样式 */
-.second-input{
-  width: 94%;
-  margin-left: 3%;
-  margin-top: 5px
-}
-/* 三级标题tag样式 */
-.third-tag{
-    margin-left: 3%;
-}
-/* 三级标题input样式 */
-.third-input{
-    width: 94%;
-    margin-left: 3%;
-    margin-top: 5px
-}
-.second-button{
-  width: 20px;
-  margin-right: 5px;
-  text-align: right;
-  float: right;
-}
-.second-button-add{
-    width: 20px;
-    margin-right: -5%;
-  /*border: 1px solid red;*/
-    text-align: right;
-    float: right;
-
-}
-.third-button{
-    width: 20px;
-    margin-right: 5px;
-    text-align: right;
-    float: right;
-
-}
-.firstLevelTitleAdd{
-  width: 100%;
-  /*margin-left: 5%;*/
-  margin-top: 1vh;
-  background-color: #F5F5F5;
-  text-align: center;
-  /*height: 3vh;*/
-  margin-bottom: 1vh;
-  /*border: 1px solid red;*/
-}
-.text-length-p{
-  margin-right: 10px;
-  text-align: right;
-  font-size: 12px;
-  opacity: 0.5
-}
-.first-dash-left-border {
-  border-left: 1px dashed #ccc; /* 左边框为灰色虚线 */
-  margin-left: 6%;
-}
-.second-dash-left-border {
-  border-left: 1px dashed #ccc; /* 左边框为灰色虚线 */
-  margin-left: 3%;
-  margin-top: 8px; /* 短边框后面有10px的内边距 */
-
-}
-.third-dash-left-border{
-    border-left: 1px dashed #ccc; /* 左边框为灰色虚线 */
-    margin-left: 3%;
-    margin-top: 5px; /* 短边框后面有10px的内边距 */
-
-}
-.file-icon{
-  width: 18px;
-}
+/* 使用 Tailwind CSS，大部分样式已迁移到类名中 */
 </style>

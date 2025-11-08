@@ -12,6 +12,7 @@ from services.templates import TemplateService
 from utils.logger import mylog
 from pydantic import ValidationError
 from fastapi import FastAPI
+from config import get_async_db
 from pydantic import BaseModel
 from sqlalchemy import Date, and_, case, cast, create_engine, Column, Integer, String, delete, func, select, types
 from sqlalchemy import or_, update, BigInteger
@@ -28,45 +29,6 @@ router = APIRouter()
 
 # 创建一个模板服务实例，用于处理模板相关的业务逻辑
 template_service = TemplateService()
-
-@router.get("/templates", response_model=TemplateListResponse)
-async def get_templates():
-    """
-    获取所有模板的列表
-
-    这个API端点用于获取所有模板的列表。它会调用模板服务的get_templates方法，
-    并返回一个TemplateListResponse对象，该对象包含所有模板的详细信息。
-
-    Returns:
-        TemplateListResponse: 包含所有模板的详细信息
-    """
-    mylog.info("*"*100)
-    mylog.info("开始处理获取模板列表请求")
-    return await template_service.get_templates()
-
-@router.get("/templates/{templateId}", response_model=TemplateContentResponse)
-async def get_template_content(templateId: int):
-    """
-    获取指定ID的模板内容
-
-    这个API端点用于获取指定ID的模板内容。它会调用模板服务的get_template_content方法，
-    并返回一个TemplateContentResponse对象。如果模板ID不存在，则会抛出404错误。
-
-    Args:
-        templateId (int): 模板的唯一标识符
-
-    Returns:
-        TemplateContentResponse: 包含模板内容的详细信息
-
-    Raises:
-        HTTPException: 如果模板ID不存在，则抛出404错误
-    """
-    mylog.info("*"*100)
-    mylog.info(f"开始处理获取模板内容请求，模板ID: {templateId}")
-    response = await template_service.get_template_content(templateId)
-    if response.code == 404:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return response
 
 @router.post("/create", response_model=TemplateContentResponse)
 async def create_template(request_data: TemplateCreateNeed, request: Request):
@@ -151,34 +113,7 @@ class AiTemplateTitle(Base):
     writing_requirement = Column(String(2000), comment='写作要求')
     status_cd = Column(String(1), comment='有效性，Y有效，N无效')
 
-# 创建异步数据库引擎
-engine = create_async_engine(
-    "mysql+aiomysql://gmccai:LPDY!iLrUd8irpGp@36.137.180.157:3306/tianshu",
-    echo=True,
-    pool_pre_ping=True,  # 在获取连接之前检查连接是否有效
-    pool_size=10,        # 设置连接池大小
-    max_overflow=20,     # 设置最大溢出连接数
-    pool_timeout=30,     # 设置连接池超时时间
-)
-
-# 创建数据库引擎
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-# 依赖项函数，为每个请求单独创建和关闭会话
-# 创建异步会话工厂
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
-async def get_async_db():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-# 创建会话类
-Session = sessionmaker(bind=engine)
+# 统一使用全局配置的 get_async_db，避免环境不一致
 
 
 class TemplateQueryRequest(BaseModel):
@@ -201,8 +136,7 @@ class TemplateUpdateRequest(BaseModel):
     originalTemplate: list = None  # 将 originalTemplate 类型改为 Any
 
 
-# 创建会话
-session = Session()
+# 去除同步 Session，会话统一走异步依赖注入
 
 # 重试装饰器配置
 # stop=stop_after_attempt(3) 表示最多重试3次
@@ -273,7 +207,7 @@ async def template_save(request_data: TemplateSaveRequest,db: AsyncSession = Dep
                 {"code": 500, "message": f"模板保存失败，请重试或联系系统管理员", "type": "failed"})
         )
     finally:
-        session.close()  # 确保会话被关闭
+        pass
 
 show_order = 0
 async def save_children(db :AsyncSession,template_id: int, parent_id: int, children: list):
@@ -446,7 +380,7 @@ async def title_data_query(request_data: TemplateQueryRequest,db: AsyncSession =
                 {"code": 500, "message": f"标题数据查询失败，请重试或联系系统管理员", "type": "failed"})
         )
     finally:
-        session.close()
+        pass
 
 def build_tree(data):
     def build_children(parent_id, data):
@@ -487,7 +421,7 @@ async def title_query_by_templateName(db: AsyncSession, template_name, user_id):
         error_msg = f"标题数据查询接口发生异常: {str(e)}"
         mylog.error(error_msg)
     finally:
-        session.close()
+        pass
 
 
 
@@ -700,7 +634,7 @@ async def query_usually_template_list(user_id, db: AsyncSession):
     )
 
     # Main query combining both subqueries
-    combined_query = (
+    union_query = (
         select(
             ranked_templates_subquery.c.user_id,
             ranked_templates_subquery.c.template_id,
@@ -719,14 +653,23 @@ async def query_usually_template_list(user_id, db: AsyncSession):
                 unranked_templates_subquery.c.use_time.label('create_time')
             )
         )
-        .order_by(
-            case((ranked_templates_subquery.c.use_count == 0, 1), else_=0),
-            ranked_templates_subquery.c.use_count.desc(),
-            ranked_templates_subquery.c.show_order.asc()
-        )
+    ).subquery()
+
+    # 对 union 结果进行排序（必须对外层列排序，不能引用子查询别名）
+    ordered_query = select(
+        union_query.c.user_id,
+        union_query.c.template_id,
+        union_query.c.template_name,
+        union_query.c.use_count,
+        union_query.c.show_order,
+        union_query.c.create_time
+    ).order_by(
+        case((union_query.c.use_count == 0, 1), else_=0),
+        union_query.c.use_count.desc(),
+        union_query.c.show_order.asc()
     )
 
-    result = await db.execute(combined_query)
+    result = await db.execute(ordered_query)
     templates = result.fetchall()
 
     # Convert the result to a list of dictionaries
@@ -748,15 +691,32 @@ class queryUsuallyTemplate(BaseModel):
 
 @router.post("/queryUsuallyTemplate")
 async def query_file_list(query_usually_template: queryUsuallyTemplate, db: AsyncSession = Depends(get_async_db)):
-    user_id = query_usually_template.userId
-    templates_list = await query_usually_template_list(user_id, db)
+    try:
+        user_id = query_usually_template.userId
+        templates_list = await query_usually_template_list(user_id, db)
 
-    return JSONResponse(
-        status_code=200,
-        content=jsonable_encoder(
-            {"code": 200, "message": "常用模板列表查询成功", "type": "success",
-             "data": templates_list})
-    )
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder(
+                {"code": 200, "message": "常用模板列表查询成功", "type": "success",
+                 "data": templates_list})
+        )
+    except SQLAlchemyError as e:
+        error_msg = f"常用模板查询接口发生数据库异常: {str(e)}"
+        mylog.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content=jsonable_encoder(
+                {"code": 500, "message": "常用模板查询失败，请重试或联系系统管理员", "type": "failed"})
+        )
+    except Exception as e:
+        error_msg = f"常用模板查询接口发生异常: {str(e)}"
+        mylog.error(error_msg, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content=jsonable_encoder(
+                {"code": 500, "message": "常用模板查询失败，请重试或联系系统管理员", "type": "failed"})
+        )
 
 
 def get_create_time(item):

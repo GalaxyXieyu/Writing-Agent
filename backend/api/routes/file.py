@@ -22,29 +22,14 @@ from datetime import datetime
 from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from config import get_async_db
 from docx import Document
 from io import BytesIO
 from tenacity import retry, stop_after_attempt, wait_fixed
 router = APIRouter()
 Base = declarative_base()
 
-# 创建异步数据库引擎，设置连接池大小
-engine = create_async_engine(
-    "mysql+aiomysql://gmccai:LPDY!iLrUd8irpGp@36.137.180.157:3306/tianshu",
-    echo=True,
-    pool_pre_ping=True,  # 在获取连接之前检查连接是否有效
-    pool_size=10,  # 设置连接池的大小
-    max_overflow=20,  # 允许的最大溢出连接数
-    pool_timeout=30,  # 连接池获取连接的超时时间
-    pool_recycle=1800  # 连接回收时间，防止 MySQL 断开连接
-)
-
-# 创建异步会话工厂
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
+"""统一使用全局 get_async_db，避免多处硬编码数据库连接导致环境不一致"""
 
 class AiFileRel(Base):
     __tablename__ = 'ai_file_rel'
@@ -66,12 +51,7 @@ class AiFileRel(Base):
     data_path = Column(String(255), comment='文件路径')
     title_data = Column(String, comment='文件解析标题数据')
 
-async def get_async_db():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+# 使用 config.get_async_db 注入 db
 
 # 设置文件保存的目录
 UPLOAD_FOLDER = Path(os.getenv('UPLOAD_FOLDER', './uploads'))

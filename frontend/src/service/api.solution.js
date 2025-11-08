@@ -1,8 +1,7 @@
 import { http } from './request';
 import axios from 'axios';
-// import { VITE_SOLUTION_API_BASE_PREFIX, VITE_SOLUTION_API_PROXY_PREFIX } from '@/constants';
-const VITE_SOLUTION_API_BASE_PREFIX = 'http://localhost:29847';
-// const VITE_SOLUTION_API_BASE_PREFIX = 'http://10.86.13.11:34501';
+// 优先使用环境变量中的后端主机地址，默认回落到本地开发端口
+const VITE_SOLUTION_API_BASE_PREFIX = import.meta.env.VITE_BASE_API_HOST || 'http://localhost:29847';
 const VITE_SOLUTION_API_PROXY_PREFIX = '/api';
 
 /**
@@ -13,7 +12,8 @@ const VITE_SOLUTION_API_PROXY_PREFIX = '/api';
 export const solutionLogin = (data) => {
     return http({
         method: 'POST',
-        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/login`,
+        // 后端 auth 路由无前缀，挂在 /api 下
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/login`,
         data,
     });
 };
@@ -26,7 +26,8 @@ export const solutionLogin = (data) => {
 export const verifyTokenExpired = (token) => {
     return http({
         method: 'POST',
-        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/checkToken`,
+        // 后端 auth 路由无前缀，挂在 /api 下
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/checkToken`,
         data: { key: token },
     });
 };

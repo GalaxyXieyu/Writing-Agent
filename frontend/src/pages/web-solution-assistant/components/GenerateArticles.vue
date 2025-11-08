@@ -44,7 +44,7 @@
 </template>
 <script setup>
 import {Download,Edit} from '@element-plus/icons-vue'
-import {ref,nextTick,watch,onUnmounted} from 'vue';
+import {ref,nextTick,watch,onBeforeUnmount} from 'vue';
 import WangEditor from './WangEditor.vue';
 import { asBlob } from 'html-docx-js-typescript';
 import { saveAs } from 'file-saver';
@@ -167,7 +167,7 @@ const createArticle = (templateTitleParam1) => {
   })
 
 }
-onUnmounted(()=>{
+onBeforeUnmount(()=>{
     ctrl.abort();
 })
 defineExpose({

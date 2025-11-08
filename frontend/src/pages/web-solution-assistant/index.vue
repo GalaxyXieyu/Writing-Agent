@@ -1,141 +1,181 @@
 <template>
 
-    <div class="main">
-      <div class="main-left">
-
-        <div class="main-left-top">
-          <el-row>
-              <el-col :span="24" style="margin-left: 1%">
-                  <span style="font-size: 1.1rem;font-weight: bold">写作模板</span>
-                <el-button type="text" size="small"  @click="lookTemplateDialog"
-                           style="margin-top: 1%;float: right;font-size: 1.035rem;color: #677AFD"
-                >查看全部模板<el-icon><ArrowRightBold /></el-icon></el-button>
-              </el-col>
-            <el-table ref="tableRef" :key="tableKey" :data="usuallyTemplateData"  height="16vh"
-                      highlight-current-row
-                      @current-change="chooseTemplateFun"
-                      :row-key="getRowKey"
-                      :show-header="false"
-                      style="border-top: 1px solid #eff0f1;border-bottom: 1px solid #eff0f1"
-                      class="no-horizontal-border"
-                      scrollbar-always-on>
-              <el-table-column>
-                <template #default="scope">
-                  {{ scope.row.template_name }}
-                </template>
-              </el-table-column>
-            </el-table>
-            <div style="margin-top: auto;width: 100%">
-              <el-button type="primary" size="small" @click="uploadFiles"
-                         class="topButton">生成自定义模板</el-button>
+    <div class="flex h-full gap-responsive bg-background p-responsive overflow-hidden">
+      <!-- 左侧表单区域 -->
+      <div class="flex w-full flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[400px]">
+        <!-- 模板选择区域 -->
+        <Card class="flex flex-col flex-shrink-0">
+          <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
+            <CardTitle class="text-responsive-base font-semibold">写作模板</CardTitle>
+            <Button variant="ghost" size="sm" @click="lookTemplateDialog" class="h-auto p-0 text-primary text-responsive-sm">
+              查看全部模板
+              <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </Button>
+          </CardHeader>
+          <CardContent class="flex flex-col gap-4 px-responsive pb-responsive">
+            <div class="max-h-responsive overflow-y-auto border-y">
+              <el-table 
+                ref="tableRef" 
+                :key="tableKey" 
+                :data="usuallyTemplateData"  
+                highlight-current-row
+                @current-change="chooseTemplateFun"
+                :row-key="getRowKey"
+                :show-header="false"
+                class="no-horizontal-border"
+                scrollbar-always-on>
+                <el-table-column>
+                  <template #default="scope">
+                    {{ scope.row.template_name }}
+                  </template>
+                </el-table-column>
+              </el-table>
             </div>
-          </el-row>
-        </div>
+            <Button variant="outline" @click="uploadFiles" class="w-full">
+              生成自定义模板
+            </Button>
+          </CardContent>
+        </Card>
 
-        <!--写作模板-->
-        <div class="main-left-under"  v-loading="reLoading" element-loading-text="Loading...">
-          <div style="padding-top: 0.2vh;padding-left: 3%;padding-right: 3%;">
-            <div style="padding-bottom: 0;margin-top: 0.5vh;">
-              <span style="font-size: 1.035rem;margin-left: 1%">文章标题</span>
-              <el-button type="text" size="small"  @click="saveTemplateDialog"
-                         style="width: 20%;float: right;font-size: 1.035rem;color: #677AFD"
-              >保存模板</el-button>
-                <el-input
-                    style="margin-top: 1vh"
-                    v-model="templateTitle"
-                    type="textarea"
-                    autosize
-                    resize="none"
-                    placeholder="输入文章标题"
-                    maxlength="100"
-                    show-word-limit
-                />
-            </div>
-            <div style="padding-top: 0;padding-bottom: 0;margin-top: 1vh">
-              <span style="font-size: 1.035rem;margin-left: 1%">文章要求</span>
-              <el-input type="textarea" style="font-size: 14px;margin-top: 0.8vh"
-                        resize="none"
-                        autosize
-                        v-model="articleRequirement" placeholder="请输入文章要求"
-                        maxlength="100"
-                        show-word-limit
+        <!-- 表单输入区域 -->
+        <Card class="flex flex-1 flex-col overflow-hidden min-h-0">
+          <CardContent class="flex flex-1 flex-col gap-responsive overflow-y-auto p-responsive min-h-0 pb-24">
+            <!-- 文章标题 -->
+            <div class="space-y-2 flex-shrink-0">
+              <div class="flex items-center justify-between">
+                <Label for="template-title" class="text-responsive-sm font-medium">文章标题</Label>
+                <Button variant="ghost" size="sm" @click="saveTemplateDialog" class="h-auto p-0 text-primary text-responsive-xs">
+                  保存模板
+                </Button>
+              </div>
+              <Textarea
+                id="template-title"
+                v-model="templateTitle"
+                placeholder="输入文章标题"
+                :maxlength="100"
+                class="min-h-responsive"
               />
+              <p class="text-right text-responsive-xs text-muted-foreground">{{ templateTitle.length }}/100</p>
             </div>
-          </div>
-          <div class="mobile">
-            <div v-loading="loading" element-loading-text="Loading...">
+
+            <!-- 文章要求 -->
+            <div class="space-y-2 flex-shrink-0">
+              <Label for="article-requirement" class="text-responsive-sm font-medium">文章要求</Label>
+              <Textarea
+                id="article-requirement"
+                v-model="articleRequirement"
+                placeholder="请输入文章要求"
+                :maxlength="100"
+                class="min-h-responsive"
+              />
+              <p class="text-right text-responsive-xs text-muted-foreground">{{ articleRequirement.length }}/100</p>
+            </div>
+
+            <!-- 模型选择区域 -->
+            <div class="flex-shrink-0 flex items-center gap-4 border-t border-border pt-4 pb-1">
+              <Label class="text-responsive-sm font-medium text-foreground/90 whitespace-nowrap flex-shrink-0 min-w-[80px]">模型选择</Label>
+              <ModelSelector v-model="currentModelId" @manage="openModelManage" />
+            </div>
+
+            <!-- 标题输入区域 -->
+            <div class="flex-1 min-h-0 overflow-y-auto" v-loading="loading" element-loading-text="Loading...">
               <title-input :title-data="titleData"></title-input>
             </div>
-          </div>
-          <div class="buttonListClass">
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 3% 0;">
-              <ModelSelector v-model="currentModelId" @manage="openModelManage" />
-              <el-button type="primary" v-if="!isCreate" size="small" @click="createArticle"
-                         class="buttonClass" style="background-color: #5571FF;">生成文章</el-button>
-              <el-button type="danger" v-else size="small"  @click="pauseCreate"
-                         class="buttonClass">暂停生成</el-button>
-            </div>
-          </div>
-        </div>
+          </CardContent>
 
-        </div>
-      <!--生成文章-->
-      <div class="main-right">
-          <rich-text-editor ref="richTextEditorRefs"
-                            :templateTitle="templateTitle"
-                            @requestComplete="handleRequestComplete"
-                            @requestError="handleRequestError"></rich-text-editor>
+          <!-- 底部操作栏 -->
+          <div class="border-t bg-background p-responsive flex-shrink-0 sticky bottom-0 z-10">
+            <Button 
+              v-if="!isCreate" 
+              @click="createArticle"
+              class="w-full"
+            >
+              生成文章
+            </Button>
+            <Button 
+              v-else 
+              variant="destructive"
+              @click="pauseCreate"
+              class="w-full"
+            >
+              暂停生成
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <!-- 右侧内容区域 -->
+      <div class="flex-1 overflow-hidden rounded-lg bg-background min-w-0">
+        <rich-text-editor 
+          ref="richTextEditorRefs"
+          :templateTitle="templateTitle"
+          @requestComplete="handleRequestComplete"
+          @requestError="handleRequestError"
+        />
       </div>
     </div>
 
 
-    <el-dialog
-        v-model="showSaveTemplateDialog"
-        title="请输入自定义模板名称"
-        width="24%"
-        align-center
-        @close="showSaveTemplateDialog = false"
-    >
-        <div v-if="showSaveTemplate"
-        style="margin-bottom: 10px">
-            如何保存该自定义模板：
-            <el-radio-group v-model="isAdd">
-                <el-radio-button label="1000">保存为新模板</el-radio-button>
-                <el-radio-button label="1001">覆盖原有模板</el-radio-button>
-            </el-radio-group>
-
+    <Dialog v-model="showSaveTemplateDialog" className="max-w-md">
+      <DialogHeader>
+        <DialogTitle>请输入自定义模板名称</DialogTitle>
+      </DialogHeader>
+      <div class="space-y-4 py-4">
+        <div v-if="showSaveTemplate" class="space-y-2">
+          <Label>如何保存该自定义模板：</Label>
+          <div class="flex gap-2">
+            <Button 
+              :variant="isAdd === '1000' ? 'default' : 'outline'"
+              @click="isAdd = '1000'"
+              class="flex-1"
+            >
+              保存为新模板
+            </Button>
+            <Button 
+              :variant="isAdd === '1001' ? 'default' : 'outline'"
+              @click="isAdd = '1001'"
+              class="flex-1"
+            >
+              覆盖原有模板
+            </Button>
+          </div>
         </div>
-        <el-form-item label="模板名称：">
-            <el-input v-model="templateName" placeholder="请输入模板名称"
-                      type="textarea"
-                      autosize
-                      resize="none"
-                      style="width: 88%" maxlength="50" show-word-limit/>
-        </el-form-item>
-        <template #footer>
-            <div class="dialog-footer">
-                <el-button @click="cancelSave()">取消</el-button>
-                <el-button type="primary" color="#5571FF"  @click="saveTemplate()">确认
-                </el-button>
-            </div>
-        </template>
-    </el-dialog>
+        <div class="space-y-2">
+          <Label for="template-name">模板名称：</Label>
+          <Textarea
+            id="template-name"
+            v-model="templateName"
+            placeholder="请输入模板名称"
+            :maxlength="50"
+            class="min-h-[60px]"
+          />
+          <p class="text-right text-xs text-muted-foreground">{{ templateName.length }}/50</p>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" @click="cancelSave()">取消</Button>
+        <Button @click="saveTemplate()">确认</Button>
+      </DialogFooter>
+    </Dialog>
   <el-dialog
       v-model="showTemplateDialog"
       @close="showTemplateDialog = false"
       title="全部模板"
       append-to-body
+      width="80%"
+      class="template-dialog"
   >
-      <div style="display: flex; justify-content: space-between; align-items: center;width: 98%;margin-left: 2%;margin-top: 1%">
-        <el-input
+      <div class="mb-4 flex items-center gap-4">
+        <Input
             v-model="searchTemplateName"
-            style="width: 40%;height: 4vh"
             placeholder="输入关键字查询"
-            :suffix-icon="Search"
+            class="flex-1 max-w-md"
         />
-        <div>
-          <el-button  size="large" @click="resetForm">重置</el-button>
-          <el-button style="background-color: #5571FF" :icon="Search" size="large" type="primary" @click="queryAllTemplate()">查询</el-button>
+        <div class="flex gap-2">
+          <Button variant="outline" @click="resetForm">重置</Button>
+          <Button @click="queryAllTemplate()">查询</Button>
         </div>
       </div>
       <el-table
@@ -169,24 +209,33 @@
           @current-change="handleCurrentChange"
       />
       <template #footer>
-        <el-button type="primary" color="#5571FF" @click="selectOneTemplate">选 定</el-button>
-        <el-button @click="canclAllTemplate">取 消</el-button>
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" @click="canclAllTemplate">取 消</Button>
+          <Button @click="selectOneTemplate">选 定</Button>
+        </div>
       </template>
   </el-dialog>
-  <el-dialog v-model="reNameVisible" title="重命名" width="500" center  align-center>
-    <span style="color: red">*</span>新名称：<el-input
-      v-model="newName"
-      style="width: 240px"
-      placeholder="请输入新名称"
-      size="large"
-      show-word-limit
-      type="text"
-  />
-    <template #footer>
-      <el-button type="primary" color="#5571FF"  @click="reNameMethod">确 定</el-button>
-      <el-button @click="reNameVisible = false">取 消</el-button>
-    </template>
-  </el-dialog>
+  <Dialog v-model="reNameVisible" className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>重命名</DialogTitle>
+    </DialogHeader>
+    <div class="space-y-4 py-4">
+      <div class="space-y-2">
+        <Label for="rename-input" class="text-sm">
+          <span class="text-destructive">*</span> 新名称：
+        </Label>
+        <Input
+          id="rename-input"
+          v-model="newName"
+          placeholder="请输入新名称"
+        />
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" @click="reNameVisible = false">取 消</Button>
+      <Button @click="reNameMethod">确 定</Button>
+    </DialogFooter>
+  </Dialog>
 
 
   <el-dialog v-model="dialogTableVisible" title="生成自定义模板" width="36%">
@@ -263,50 +312,63 @@
       <el-button type="primary" color="#5571FF" v-if="isFastCreate" @click="submit">提 交 </el-button>
     </template>
   </el-dialog>
-  <el-dialog v-model="centerDialogVisible" title="重命名文件" width="500" center  align-center>
-    <span style="color: red">*</span>文件名称：<el-input
-      v-model="newFilename"
-      style="width: 240px"
-      maxlength="256"
-      placeholder="请输入文件名称"
-      size="large"
-      show-word-limit
-      type="text"
-  />
-    <template #footer>
-      <el-button type="primary" @click="reFilename">确 定</el-button>
-      <el-button @click="centerDialogVisible = false">取 消</el-button>
-    </template>
-  </el-dialog>
+  <Dialog v-model="centerDialogVisible" className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>重命名文件</DialogTitle>
+    </DialogHeader>
+    <div class="space-y-4 py-4">
+      <div class="space-y-2">
+        <Label for="new-filename" class="text-sm">
+          <span class="text-destructive">*</span> 文件名称：
+        </Label>
+        <Input
+          id="new-filename"
+          v-model="newFilename"
+          placeholder="请输入文件名称"
+          :maxlength="256"
+        />
+        <p class="text-right text-xs text-muted-foreground">{{ newFilename.length }}/256</p>
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" @click="centerDialogVisible = false">取 消</Button>
+      <Button @click="reFilename">确 定</Button>
+    </DialogFooter>
+  </Dialog>
 
-  <el-dialog v-model="deleteDialogVisible" :show-close="false" width="500" align-center>
-    <template #header="{  titleId, titleClass }">
-      <div class="my-header">
-        <h4 :id="titleId" :class="titleClass">是否删除该文件？</h4>
+  <Dialog v-model="deleteDialogVisible" className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>是否删除该文件？</DialogTitle>
+    </DialogHeader>
+    <div class="py-4">
+      <p class="text-sm text-muted-foreground">点击删除后文件将彻底删除，不能找回。</p>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" @click="deleteDialogVisible = false">取 消</Button>
+      <Button variant="destructive" @click="deleteFile">删 除</Button>
+    </DialogFooter>
+  </Dialog>
+  <Dialog v-model="createTemplateVisible" className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>模板名称重命名</DialogTitle>
+    </DialogHeader>
+    <div class="space-y-4 py-4">
+      <div class="space-y-2">
+        <Label for="template-filename" class="text-sm">
+          <span class="text-destructive">*</span> 模板名称：
+        </Label>
+        <Input
+          id="template-filename"
+          v-model="newFilename"
+          placeholder="请输入模板名称"
+        />
       </div>
-    </template>
-    <span>点击删除后文件将彻底删除，不能找回。</span>
-    <template #footer>
-      <div class="dialog-footer">
-        <el-button type="primary" @click="deleteFile" color="red">删 除</el-button>
-        <el-button @click="deleteDialogVisible = false">取 消</el-button>
-      </div>
-    </template>
-  </el-dialog>
-  <el-dialog v-model="createTemplateVisible" title="模板名称重命名" width="500" center  align-center>
-    <span style="color: red">*</span>模板名称：<el-input
-      v-model="newFilename"
-      style="width: 240px"
-      placeholder="请输入模板名称"
-      size="large"
-      show-word-limit
-      type="text"
-  />
-    <template #footer>
-      <el-button type="primary" @click="reFilename">确 定</el-button>
-      <el-button @click="createTemplateVisible = false">取 消</el-button>
-    </template>
-  </el-dialog>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" @click="createTemplateVisible = false">取 消</Button>
+      <Button @click="reFilename">确 定</Button>
+    </DialogFooter>
+  </Dialog>
 </template>
 <!--13502707728-->
 <script setup>
@@ -319,6 +381,18 @@ import { ElMessage,ElMessageBox,ElSwitch } from 'element-plus'
 import { useUserStore } from '@/store';
 import ModelSelector from '@/components/ModelSelector.vue'
 import { useModelConfigStore } from '@/store/modules/modelConfig'
+import Card from '@/components/ui/Card.vue';
+import CardHeader from '@/components/ui/CardHeader.vue';
+import CardTitle from '@/components/ui/CardTitle.vue';
+import CardContent from '@/components/ui/CardContent.vue';
+import Button from '@/components/ui/Button.vue';
+import Textarea from '@/components/ui/Textarea.vue';
+import Label from '@/components/ui/Label.vue';
+import Dialog from '@/components/ui/Dialog.vue';
+import DialogHeader from '@/components/ui/DialogHeader.vue';
+import DialogTitle from '@/components/ui/DialogTitle.vue';
+import DialogFooter from '@/components/ui/DialogFooter.vue';
+import Input from '@/components/ui/Input.vue';
 import {
     deleteFileInfo, queryTemplateTitle, getFileList,
     selectWritingTemplateList,
@@ -327,7 +401,7 @@ import {
     templateRefresh12, createTemplate, templateSave, templateDelete, templateUpdate, createTemplateSelect,
     templateCreate,createTemplateReName,deleteCreateTemplate,usuallyTemplateQuery,allTemplateQuery,templateReName
 } from '@/service/api.solution';
-import { useRoute, onBeforeRouteLeave } from 'vue-router';
+// Vue3 组件数据
 const instances = ref([{
   firstLevelTitle: '',
   secondLevelTitle: '',
@@ -1553,107 +1627,19 @@ const saveTemplate=()=>{
 
 
 }
-const route = useRoute();
-onBeforeRouteLeave((to, from, next) => {
-    console.log("即将离开页面");
+// Vue3 生命周期：组件卸载前执行清理
+onBeforeUnmount(() => {
+    console.log("页面卸载");
     isCreate.value=!isCreate.value
-    richTextEditorRefs.value.isPause = true
-    // 执行离开前的操作，比如关闭接口连接
-    next();
+    if (richTextEditorRefs.value) {
+        richTextEditorRefs.value.isPause = true
+    }
 });
 </script>
 
 <style scoped>
-.main{
-  display: flex;
-  height: 94vh;
-  background: rgba(240,242,247,1);
-}
-.main-left{
-  flex: 0.34;
-  margin-top: 1vh;
-  margin-left: 2vh;
-  height: 90vh;
-  /*border: 1px solid red;*/
-}
-.main-left-top{
-  height: 24vh;
-  display: flex;
-  /*flex-direction: column;*/
-  /*border: 1px solid #003ffd;*/
-  background: rgba(255,255,255,1);
-  border-radius: 10px
-}
-.topButton{
-  width: 100%;
-  height: 3.4vh;
-  /*border: 1px solid red;*/
-  font-size: 1.05rem;
-  margin-top: 0.3vh;
-  letter-spacing: 1px;
-  background-color: #EEF0FF;
-  color: #5572e5;
-  border-color: #5572e5
-}
-.main-left-under{
-  height: 65.1vh;
-  margin-top: 2vh;
-  display: flex;
-  flex-direction: column;
-  /*justify-content: space-between; !* 让子元素之间间距最大化 *!*/
-  background: rgba(255,255,255,1);
-  /*border: 1px solid red;*/
-  /*padding-right: 4%;*/
-  border-radius: 10px
-}
-.mobile{
-  width: 100%;
-  overflow-y: scroll ;
-    margin-top: 1vh;
-  padding-left: 3%;
-  padding-right: 3%;
-  /*height: 42vh;*/
-}
-::-webkit-scrollbar-thumb {
-  background-color: #DDDEE0;
-}
-.buttonListClass{
-  border-top: 1px solid white;
-  box-shadow: 0 -3px 5px 0 rgba(0, 0, 0, 0.1);
-  height: 5vh;
-  min-height: 5vh;
-  /*border: 1px solid red;*/
-  margin-top: auto; /* 推向底部 */
-  /*padding: 0.5vh; !* 调整上下左右内边距 *!*/
-}
-.buttonClass{
-  width: 90%;
-  height: 80%;
-  margin-top: 5px;
-  font-size: 1.05rem;
-  letter-spacing: 2px;
-  margin-left: 5%;
-
-  border: none
-}
-.main-right{
-  flex: 1;
-  margin-top: 1vh;
-  margin-left: 2vh;
-  margin-right: 2vh;
-  height: 91vh;
-  background: rgba(255,255,255,1);
-  overflow-y: hidden ;
-
-}
-.el-row{
-  padding:1vh;
-}
-.text-length-p{
-  text-align: right;
-  font-size: 12px;
-  opacity: 0.5
-}
+/* 使用 Tailwind CSS，大部分样式已迁移到类名中 */
+/* 保留必要的 Element Plus 样式覆盖 */
 /* 为el-table设置固定高度和滚动条 */
 .scrollable-table {
     height: 30vh; /* 根据需要调整，确保留出分页和按钮的空间 */
@@ -1668,12 +1654,12 @@ onBeforeRouteLeave((to, from, next) => {
     overflow: auto !important;
 }
 
-::v-deep .el-dialog {
+:deep(.el-dialog) {
   border-radius: 20px;
   padding: 0 0 16px 0;
 }
 
-::v-deep .el-dialog__header {
+:deep(.el-dialog__header) {
   --el-text-color-primary: #1EFFFF;
   --el-text-color-regular: #fff;
   padding: 0 !important;
@@ -1687,18 +1673,18 @@ onBeforeRouteLeave((to, from, next) => {
   border-top-right-radius: 15px;
   box-sizing: border-box;
 }
-::v-deep .el-dialog__title {
+:deep(.el-dialog__title) {
   margin-left: 24px;
   line-height: 50px;
   color: black;
   font-weight: bold;
 }
 
-::v-deep .el-dialog__body {
+:deep(.el-dialog__body) {
   padding: 16px 16px 0 16px;
 }
 
-::v-deep .el-dialog__footer {
+:deep(.el-dialog__footer) {
   padding: 16px 16px 0 16px;
 }
 
@@ -1729,46 +1715,46 @@ onBeforeRouteLeave((to, from, next) => {
 }
 
 
-::v-deep .custom-message-box {
+:deep(.custom-message-box) {
   width: 300px; /* 设置宽度 */
   height: 150px;
 }
 
-::v-deep .custom-message-box .el-message-box__message {
+:deep(.custom-message-box .el-message-box__message) {
   margin-top: 8px;
   font-size: 20px; /* 调整消息内容的字体大小 */
 }
 
-::v-deep .custom-message-box .el-message-box__btns button {
+:deep(.custom-message-box .el-message-box__btns button) {
   font-size: 20px; /* 调整按钮的字体大小 */
 }
-::v-deep .custom-message-box .el-message-box__header .el-message-box__title .el-icon {
+:deep(.custom-message-box .el-message-box__header .el-message-box__title .el-icon) {
   font-size: 32px;
 }
-::v-deep .custom-confirm-button{
+:deep(.custom-confirm-button) {
   background-color: #5571FF;
   border: none;
 }
-::v-deep .custom-upload-box .el-upload .el-upload-dragger .el-icon {
+:deep(.custom-upload-box .el-upload .el-upload-dragger .el-icon) {
   margin-left: 10%;
   margin-top: -20px;
   font-size: 40px;
 }
 
-::v-deep .custom-upload-box .el-upload .el-upload-dragger {
+:deep(.custom-upload-box .el-upload .el-upload-dragger) {
   display: flex;
   height: 50px;
 }
-::v-deep .custom-upload-box .el-upload .el-upload-dragger .el-upload__text {
+:deep(.custom-upload-box .el-upload .el-upload-dragger .el-upload__text) {
   margin-top: -16px;
   font-size: 20px;
 }
-::v-deep .el-table .el-table__body td {
+:deep(.el-table .el-table__body td) {
   font-size: 15px; /* 调整字体大小 */
   font-weight: normal; /* 加粗字体 */
   /*font-family:'Times New Roman', Times, serif;*/
 }
-::v-deep .demo-progress .el-progress--line {
+:deep(.demo-progress .el-progress--line) {
   /*margin-bottom: 15px;*/
   height: 20px;
   width: 100%;
@@ -1778,16 +1764,16 @@ onBeforeRouteLeave((to, from, next) => {
   width: 4.8%;
 }
 /* 修改当前页码按钮的背景色和文字颜色 */
-::v-deep .el-pagination .el-pager .number.is-active {
+:deep(.el-pagination .el-pager .number.is-active) {
   /*background-color: #5571FF; !* 当前页码按钮背景颜色 *!*/
   color: #5571FF; /* 当前页码按钮文字颜色 */
 
 }
-::v-deep .el-pagination .el-pager .number:hover{
+:deep(.el-pagination .el-pager .number:hover) {
   /*background-color: #5571FF; !* 当前页码按钮背景颜色 *!*/
   color: #5571FF; /* 当前页码按钮文字颜色 */
 
 }
-::v-deep .no-horizontal-border .el-table__row>td{ border: none; }
-::v-deep .no-horizontal-border .el-table::before { height: 0px; }
+:deep(.no-horizontal-border .el-table__row>td) { border: none; }
+:deep(.no-horizontal-border .el-table::before) { height: 0px; }
 </style>

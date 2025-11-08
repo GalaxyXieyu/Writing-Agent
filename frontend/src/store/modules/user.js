@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { verifyTokenExpired } from '@/service/api.solution';
 import { useRouterStore } from '@/store';
+import { ElMessage } from 'element-plus';
 // import { ROUTER_BASE, LOGIN_ROUTE_MAP, HOME_ROUTE_MAP } from '@/constants';
 
 export const useUserStore = defineStore(
@@ -17,7 +18,11 @@ export const useUserStore = defineStore(
 		 * @return {void}
 		 */
 		const setProfile = (info) => {
-			profile.value = info;
+			profile.value = info || {};
+			// 兼容旧字段：如果未提供 mobile，则用 user_id 兜底
+			if (!profile.value.mobile && profile.value.user_id) {
+				profile.value.mobile = profile.value.user_id;
+			}
 		};
 
 		/**
@@ -52,15 +57,11 @@ export const useUserStore = defineStore(
 		 */
 		const verifyToken = async (path) => {
 			function redirectLogin(message = '登录已过期，请重新登录') {
-				uni.showToast({
-					title: message,
-					icon: 'none',
-				});
+				ElMessage.warning(message);
 				resetToken();
 				resetProfile();
-				uni.redirectTo({
-					url: "/pages/web-solution-assistant/index",
-				});
+				// 路由跳转需要在组件中使用 useRouter
+				window.location.href = '/web/web-solution-assistant';
 			}
 		};
 
@@ -82,10 +83,10 @@ export const useUserStore = defineStore(
 		persist: {
 			storage: {
 				getItem: (key) => {
-					return uni.getStorageSync(key);
+					return localStorage.getItem(key);
 				},
 				setItem: (key, value) => {
-					return uni.setStorageSync(key, value);
+					return localStorage.setItem(key, value);
 				},
 			},
 		},

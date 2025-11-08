@@ -14,8 +14,9 @@ export const useModelConfigStore = defineStore('modelConfig', {
       this.loading = true
       try {
         const { data } = await modelConfigApi.getList({ page: this.pagination.page, page_size: this.pagination.pageSize, ...params })
-        this.modelList = data.data.list
-        this.pagination.total = data.data.total
+        // http 封装已返回后端对象，解构到 data 即为后端的 data 字段
+        this.modelList = data?.list || []
+        this.pagination.total = data?.total || 0
       } finally {
         this.loading = false
       }
@@ -41,7 +42,7 @@ export const useModelConfigStore = defineStore('modelConfig', {
     },
     async fetchDefault(userId) {
       const { data } = await modelConfigApi.getDefault(userId)
-      this.defaultModel = data.data
+      this.defaultModel = data || null
     },
   },
   getters: {

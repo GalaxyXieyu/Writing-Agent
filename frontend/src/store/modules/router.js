@@ -9,7 +9,7 @@ export const useRouterStore = defineStore(
 			{
 				icon: 'chat',
 				name: 'solution',
-				route: '/pages/web-solution-assistant/index',
+				route: '/web-solution-assistant',
 				text: '解决方案助手',
 			},
 		];
@@ -42,10 +42,10 @@ export const useRouterStore = defineStore(
 		persist: {
 			storage: {
 				getItem: (key) => {
-					return uni.getStorageSync(key);
+					return localStorage.getItem(key);
 				},
 				setItem: (key, value) => {
-					return uni.setStorageSync(key, value);
+					return localStorage.setItem(key, value);
 				},
 			},
 		},

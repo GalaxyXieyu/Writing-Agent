@@ -1,35 +1,25 @@
 import { defineConfig, loadEnv } from 'vite';
-import uni from '@dcloudio/vite-plugin-uni';
+import vue from '@vitejs/plugin-vue';
 import * as path from 'path';
-import basicSsl from '@vitejs/plugin-basic-ssl';
-import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
-import prismjs from 'vite-plugin-prismjs';
 
 // https://vitejs.dev/config/
-export default async (option) => {
-	const { mode } = option;
+export default ({ mode }) => {
 	const env = loadEnv(mode, process.cwd());
-	console.log('🚀 ~ env:', process.env.UNI_CUSTOM_DEFINE, process.env.ROUTER_BASE, env.VITE_BASE_API_HOST);
-
+	console.log('🚀 ~ env:', env.VITE_BASE_API_HOST);
 
 	return defineConfig({
-		/* 构建后静态文件指向/web/，代表在域名的/web目录下部署运行 */
-		// base: routerBase,
+		base: '/web/',
 		plugins: [
-			uni(),
-			basicSsl(),
-			createSvgIconsPlugin({
-				// 指定需要缓存的图标文件夹
-				iconDirs: [path.resolve(process.cwd(), 'src/static/icons')],
-				// 指定symbolId格式
-				symbolId: 'icon-[dir]-[name]',
-			}),
-			prismjs({
-				languages: 'all',
-				plugins: [],
-				theme: 'tomorrow',
-			}),
+			vue(),
 		],
+		css: {
+			preprocessorOptions: {
+				scss: {
+					api: 'modern-compiler',
+					silenceDeprecations: ['legacy-js-api', 'import'],
+				},
+			},
+		},
 		resolve: {
 			// 设置别名
 			alias: {
@@ -41,16 +31,22 @@ export default async (option) => {
 			__VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
 		},
 		optimizeDeps: {
-			include: ['vue', 'vuetify'],
+			include: ['vuetify'],
+		},
+		build: {
+			sourcemap: false,
 		},
 		server: {
 			// INFO: 开启ssl需要引入`@vitejs/plugin-basic-ssl`
 			https: false,
 			host: '0.0.0.0',
-			// 启动端口
-			port: 8080,
+			// 启动端口（8080 被 ClashX 占用，改用 8081）
+			port: 8081,
 			// 在HBuilder编辑器里的时候需要设置为false
 			open: false,
+			hmr: {
+				overlay: false,
+			},
 			// 设置代理
 			proxy: {
 				'/api': {

@@ -2,7 +2,7 @@ import json
 import re
 import warnings
 
-from langchain.output_parsers import PydanticOutputParser
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from templates.ai_templates.template_refresh import template_refresh_prompt

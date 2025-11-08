@@ -1,0 +1,432 @@
+###############################################
+# Writing Agent API 测试文件
+# 使用 REST Client 插件测试
+###############################################
+
+### 环境变量配置
+@baseUrl = http://localhost:29847/api
+@token = d75b07fe88a5fda298bd3e5cc6c62e2d
+@userId = admin
+
+###############################################
+# 1. 认证模块 (Auth)
+###############################################
+
+### 1.1 用户注册
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "username": "newuser",
+  "password": "password123"
+}
+
+### 1.2 用户登录
+# @name login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 1.3 检查 Token
+POST {{baseUrl}}/checkToken
+Content-Type: application/json
+
+{
+  "key": "{{token}}"
+}
+
+###############################################
+# 2. 模板管理 (Templates)
+###############################################
+
+### 2.1 创建新模板
+POST {{baseUrl}}/templates/create
+Content-Type: application/json
+
+{
+  "templateName": "测试模板",
+  "requirement": "创建一个关于技术文档的模板",
+  "fileIds": [1, 2, 3],
+  "userId": "{{userId}}"
+}
+
+### 2.4 刷新模板
+POST {{baseUrl}}/templates/refresh
+Content-Type: application/json
+
+{
+  "templateId": 1,
+  "requirement": "优化模板结构",
+  "fileIds": [1, 2],
+  "userId": "{{userId}}"
+}
+
+### 2.5 查询模板详情
+POST {{baseUrl}}/templates/templateQuery
+Content-Type: application/json
+
+{
+  "templateId": 1
+}
+
+### 2.6 保存模板
+POST {{baseUrl}}/templates/templateSave
+Content-Type: application/json
+
+{
+  "templateName": "新模板",
+  "templateContent": "模板内容...",
+  "userId": "{{userId}}"
+}
+
+### 2.7 更新模板
+POST {{baseUrl}}/templates/templateUpdate
+Content-Type: application/json
+
+{
+  "templateId": 1,
+  "templateName": "更新后的模板名",
+  "templateContent": "更新后的内容..."
+}
+
+### 2.8 删除模板
+POST {{baseUrl}}/templates/templateDelete
+Content-Type: application/json
+
+{
+  "templateId": 1
+}
+
+### 2.9 查询标题数据
+POST {{baseUrl}}/templates/titleDataQuery
+Content-Type: application/json
+
+{
+  "templateId": 1
+}
+
+### 2.10 创建模板入口表
+POST {{baseUrl}}/templates/createTemplateEntryTable
+Content-Type: application/json
+
+{
+  "templateName": "入口模板",
+  "userId": "{{userId}}"
+}
+
+### 2.11 重新创建模板名称
+POST {{baseUrl}}/templates/reCreateTemplateName
+Content-Type: application/json
+
+{
+  "templateId": 1,
+  "templateName": "新名称"
+}
+
+### 2.12 重命名模板
+POST {{baseUrl}}/templates/reTemplateName
+Content-Type: application/json
+
+{
+  "templateId": 1,
+  "templateName": "重命名后的模板"
+}
+
+### 2.13 删除创建的模板
+POST {{baseUrl}}/templates/deleteCreateTemplate
+Content-Type: application/json
+
+{
+  "templateId": 1
+}
+
+### 2.14 查询创建模板列表
+POST {{baseUrl}}/templates/queryCreateTemplateList
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "pageNum": 1,
+  "pageSize": 10
+}
+
+### 2.15 查询常用模板
+POST {{baseUrl}}/templates/queryUsuallyTemplate
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}"
+}
+
+### 2.16 查询模板列表
+POST {{baseUrl}}/templates/queryTemplateList
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "templateTitle": ""
+}
+
+###############################################
+# 3. 文件管理 (File)
+###############################################
+
+### 3.1 上传文件
+POST {{baseUrl}}/file/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="test.pdf"
+Content-Type: application/pdf
+
+< ./test.pdf
+------WebKitFormBoundary
+Content-Disposition: form-data; name="busiId"
+
+test_busi_001
+------WebKitFormBoundary
+Content-Disposition: form-data; name="busiCode"
+
+TEST
+------WebKitFormBoundary--
+
+### 3.2 文件分析
+POST {{baseUrl}}/file/analysis
+Content-Type: application/json
+
+{
+  "filePath": "/path/to/file.pdf"
+}
+
+### 3.3 重新分析文件
+POST {{baseUrl}}/file/reAnalysis
+Content-Type: application/json
+
+{
+  "file_id": 1
+}
+
+### 3.4 重命名文件
+POST {{baseUrl}}/file/reFilename
+Content-Type: application/json
+
+{
+  "file_id": 1,
+  "file_name": "新文件名.pdf"
+}
+
+### 3.5 查询文件列表
+POST {{baseUrl}}/file/queryFileList
+Content-Type: application/json
+
+{
+  "busiId": "test_busi_001",
+  "pageNum": 1,
+  "pageSize": 10
+}
+
+### 3.6 选择模板标题
+POST {{baseUrl}}/file/selectTemplateTitle
+Content-Type: application/json
+
+{
+  "fileId": 1,
+  "templateId": 1
+}
+
+### 3.7 删除文件
+POST {{baseUrl}}/file/fileDelete
+Content-Type: application/json
+
+{
+  "file_id": 1
+}
+
+###############################################
+# 4. 方案管理 (Solution)
+###############################################
+
+### 4.1 生成章节
+POST {{baseUrl}}/solution/generate-chapter
+Content-Type: application/json
+
+{
+  "template": {
+    "templateId": 1,
+    "templateName": "技术文档模板",
+    "chapters": [
+      {
+        "title": "第一章",
+        "sections": ["1.1", "1.2"]
+      }
+    ]
+  },
+  "fileIds": [1, 2],
+  "userId": "{{userId}}"
+}
+
+### 4.2 生成文章（流式）
+POST {{baseUrl}}/solution/generate-article
+Content-Type: application/json
+
+{
+  "outline": {
+    "title": "文章标题",
+    "chapters": [
+      {
+        "title": "第一章",
+        "content": "章节内容"
+      }
+    ]
+  },
+  "fileIds": [1],
+  "userId": "{{userId}}"
+}
+
+### 4.3 优化内容
+POST {{baseUrl}}/solution/optimize-content
+Content-Type: application/json
+
+{
+  "content": "需要优化的内容...",
+  "userId": "{{userId}}"
+}
+
+### 4.4 保存方案
+POST {{baseUrl}}/solution/solutionSave
+Content-Type: application/json
+
+{
+  "solutionName": "方案名称",
+  "solutionContent": "方案内容...",
+  "userId": "{{userId}}"
+}
+
+### 4.5 查询方案详情
+POST {{baseUrl}}/solution/querySolution
+Content-Type: application/json
+
+{
+  "solutionId": 1
+}
+
+### 4.6 查询方案列表
+POST {{baseUrl}}/solution/querySolutionList
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "pageNum": 1,
+  "pageSize": 10
+}
+
+### 4.7 删除方案
+POST {{baseUrl}}/solution/deleteSolution
+Content-Type: application/json
+
+{
+  "solutionId": 1
+}
+
+### 4.8 更新方案
+POST {{baseUrl}}/solution/updateSolution
+Content-Type: application/json
+
+{
+  "solutionId": 1,
+  "solutionName": "更新后的方案名",
+  "solutionContent": "更新后的内容..."
+}
+
+###############################################
+# 5. 任务管理 (Tasks)
+###############################################
+
+### 5.1 提交文章生成任务
+POST {{baseUrl}}/tasks/generate-article
+Content-Type: application/json
+
+{
+  "outline": {
+    "title": "异步生成的文章",
+    "chapters": [
+      {
+        "title": "章节1",
+        "sections": ["1.1", "1.2"]
+      }
+    ]
+  },
+  "userId": "{{userId}}"
+}
+
+### 5.2 获取任务流式输出（SSE）
+GET {{baseUrl}}/tasks/task_uuid_here/stream
+
+### 5.3 查询任务详情
+GET {{baseUrl}}/tasks/task_uuid_here
+
+### 5.4 查询用户任务列表
+GET {{baseUrl}}/tasks/user/{{userId}}
+
+### 5.5 取消任务
+POST {{baseUrl}}/tasks/task_uuid_here/cancel
+
+###############################################
+# 6. 模型配置 (Model Config)
+###############################################
+
+### 6.1 创建模型配置
+POST {{baseUrl}}/model-config/create
+Content-Type: application/json
+
+{
+  "name": "GPT-4 配置",
+  "model": "gpt-4",
+  "api_base": "https://api.openai.com/v1",
+  "api_key": "sk-...",
+  "temperature": 0.7,
+  "max_tokens": 4000,
+  "user_id": "{{userId}}"
+}
+
+### 6.2 查询模型配置列表
+GET {{baseUrl}}/model-config/list?page=1&page_size=20&user_id={{userId}}
+
+### 6.3 获取模型配置详情
+GET {{baseUrl}}/model-config/1
+
+### 6.4 更新模型配置
+PUT {{baseUrl}}/model-config/1
+Content-Type: application/json
+
+{
+  "name": "GPT-4 更新",
+  "temperature": 0.8,
+  "max_tokens": 5000
+}
+
+### 6.5 删除模型配置
+DELETE {{baseUrl}}/model-config/1
+
+### 6.6 设置默认模型
+POST {{baseUrl}}/model-config/set-default?model_id=1
+
+### 6.7 获取默认模型
+GET {{baseUrl}}/model-config/default?user_id={{userId}}
+
+###############################################
+# 7. 健康检查
+###############################################
+
+### 7.1 API 根路径
+GET http://localhost:29847/
+
+### 7.2 API 文档
+GET http://localhost:29847/docs
+
+### 7.3 OpenAPI Schema
+GET http://localhost:29847/openapi.json

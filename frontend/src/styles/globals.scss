@@ -1,3 +1,16 @@
+// 响应式字体大小基础设置
+:root {
+	// 基础字体大小使用 clamp，在 14px 到 16px 之间，根据视口宽度缩放
+	font-size: clamp(14px, 1vw + 0.5rem, 16px);
+	
+	// 响应式间距变量
+	--spacing-xs: clamp(0.25rem, 0.5vw, 0.5rem);
+	--spacing-sm: clamp(0.5rem, 1vw, 0.75rem);
+	--spacing-md: clamp(0.75rem, 1.5vw, 1rem);
+	--spacing-lg: clamp(1rem, 2vw, 1.5rem);
+	--spacing-xl: clamp(1.5rem, 3vw, 2rem);
+}
+
 @mixin status-bar {
 	height: var(--status-bar-height);
 	width: 100%;
@@ -77,8 +90,53 @@
 }
 
 // ElMessageBox按钮样式修改
-::v-deep .my-confirmButtonClass-class {
+:deep(.my-confirmButtonClass-class) {
 	background-color: #5571FF!important;
 	border-color: #5571FF!important;
 	//color: #5571FF !important;
+}
+
+// 响应式字体大小类
+.text-responsive-base {
+	font-size: clamp(0.875rem, 1vw + 0.5rem, 1rem);
+}
+
+.text-responsive-sm {
+	font-size: clamp(0.75rem, 0.8vw + 0.4rem, 0.875rem);
+}
+
+.text-responsive-xs {
+	font-size: clamp(0.625rem, 0.6vw + 0.3rem, 0.75rem);
+}
+
+.text-responsive-lg {
+	font-size: clamp(1rem, 1.2vw + 0.6rem, 1.125rem);
+}
+
+// 响应式间距类
+.gap-responsive {
+	gap: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+.p-responsive {
+	padding: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+.px-responsive {
+	padding-left: clamp(0.75rem, 1.5vw, 1.5rem);
+	padding-right: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+.py-responsive {
+	padding-top: clamp(0.75rem, 1.5vw, 1.5rem);
+	padding-bottom: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+// 响应式高度
+.min-h-responsive {
+	min-height: clamp(3.5rem, 8vh, 4.5rem);
+}
+
+.max-h-responsive {
+	max-height: clamp(10rem, 25vh, 15rem);
 }

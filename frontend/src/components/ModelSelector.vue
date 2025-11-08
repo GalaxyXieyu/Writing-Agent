@@ -1,9 +1,22 @@
 <template>
   <div class="model-selector">
-    <el-select v-model="innerValue" placeholder="请选择模型" @change="onChange" :loading="loading" style="width: 260px;">
+    <el-select 
+      v-model="innerValue" 
+      placeholder="请选择模型" 
+      @change="onChange" 
+      :loading="loading" 
+      class="flex-1 min-w-[200px]"
+    >
       <el-option v-for="m in list" :key="m.id" :label="`${m.name} (${m.model})`" :value="m.id"/>
     </el-select>
-    <el-button type="primary" link @click="$emit('manage')" style="margin-left: 8px;">管理模型</el-button>
+    <el-button 
+      type="primary" 
+      link 
+      @click="$emit('manage')" 
+      class="ml-3 text-primary hover:text-primary/80"
+    >
+      管理模型
+    </el-button>
   </div>
 </template>
 
@@ -44,5 +57,10 @@ onMounted(refresh)
 </script>
 
 <style scoped>
-.model-selector { display: inline-flex; align-items: center; }
+.model-selector { 
+  display: flex; 
+  align-items: center; 
+  width: 100%;
+  gap: 0.75rem;
+}
 </style>
