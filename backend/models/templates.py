@@ -141,6 +141,7 @@ class TemplateCreate(BaseModel):
     writingRequirement: str
     userId: str
     templateName: str
+    modelId: Optional[int] = None
 
 
 class reTemplatename(BaseModel):

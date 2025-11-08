@@ -253,11 +253,11 @@
           </template>
           <el-input v-model="createTemplateFrom.createTitle" placeholder="请输入文章标题" style="width: 72%" maxlength="20" show-word-limit/>
         </el-form-item>
-        <el-form-item label="写作要求：" style="margin-left: 8%">
+        <el-form-item style="margin-left: 8%">
           <template #label>
-            <span style="color: transparent;">*</span> 模板名称：
+            <span style="color: transparent;">*</span> 模板要求：
           </template>
-          <el-input v-model="createTemplateFrom.createNeed" placeholder="请输入写作要求" style="width: 72%"
+          <el-input v-model="createTemplateFrom.createNeed" placeholder="请输入模板要求" style="width: 72%"
                     type="textarea"
                     resize="none"
                     :autosize="{ minRows: 3, maxRows: 4 }"
@@ -269,6 +269,16 @@
           </template>
           <el-input v-model="createTemplateFrom.templateName" placeholder="请输入模板名称" style="width: 72%" maxlength="20" show-word-limit/>
         </el-form-item>
+        <el-alert
+          v-if="creatingFastTemplate"
+          title="模板生成中，请稍候..."
+          type="info"
+          show-icon
+          style="margin: 0 8% 8px 8%; width: 84%"
+        />
+        <div style="margin-left: 8%; color: #909399; font-size: 12px; width: 84%">
+          提交后：系统会生成模板并自动填入左侧“文章标题/大纲”，同时可在“查看全部模板”中查看。
+        </div>
       </el-form>
     </div>
     <div v-if="!isFastCreate">
@@ -308,8 +318,8 @@
 
     </div>
     <template #footer>
-      <el-button @click="cancelDialog">关 闭</el-button>
-      <el-button type="primary" color="#5571FF" v-if="isFastCreate" @click="submit">提 交 </el-button>
+      <el-button @click="cancelDialog" :disabled="creatingFastTemplate">关 闭</el-button>
+      <el-button type="primary" color="#5571FF" v-if="isFastCreate" @click="submit" :loading="creatingFastTemplate" :disabled="!canFastCreateSubmit">提 交 </el-button>
     </template>
   </el-dialog>
   <Dialog v-model="centerDialogVisible" className="max-w-md">
@@ -471,6 +481,10 @@ const createTemplateFrom = ref({
   createNeed: '',
   templateName: ''
 });
+const creatingFastTemplate = ref(false) // 快速生成模板-提交中状态
+const canFastCreateSubmit = computed(() => {
+  return !!createTemplateFrom.value.createTitle && !!createTemplateFrom.value.templateName && !creatingFastTemplate.value
+})
 const open = (res) => {
   const messageBox = ElMessageBox.confirm(
       '模板生成成功',
@@ -800,6 +814,7 @@ const submit = () => {
       type: 'success',
       confirmButtonClass: 'my-confirmButtonClass-class',
     }).then(() => {
+      creatingFastTemplate.value = true
       ElMessage({
         message: '模板正在生成，请稍后...',
         type: 'success',
@@ -812,9 +827,12 @@ const submit = () => {
         "userId": userStore.profile.mobile,
         "templateName": createTemplateFrom.value.templateName
       }
-      cancelDialog()
       templateCreate(param).then(res => {
         open(res.data.data)
+      })
+      .finally(() => {
+        creatingFastTemplate.value = false
+        cancelDialog()
       })
 
     }).catch(() => {
@@ -1776,4 +1794,9 @@ onBeforeUnmount(() => {
 }
 :deep(.no-horizontal-border .el-table__row>td) { border: none; }
 :deep(.no-horizontal-border .el-table::before) { height: 0px; }
+
+/* 增加文章标题输入框的上间距 */
+:deep(textarea#template-title) {
+  padding-top: 2rem !important;
+}
 </style>

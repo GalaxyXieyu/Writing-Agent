@@ -7,21 +7,23 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from tenacity import retry, stop_after_attempt, wait_fixed
 from api.routes.file import select_file_by_title
-from models.templates import TemplateCreateNeed, TemplateListResponse, TemplateContentResponse, TemplateRefreshNeed
+from models.templates import (
+    TemplateCreateNeed, TemplateContentResponse, TemplateRefreshNeed,
+    WritingTemplate, AiTemplateTitle, AICreateTemplate, AIUsuallyTemplate,
+    TemplateCreate, TemplateQueryRequest, TemplateSaveRequest, TemplateUpdateRequest,
+    reTemplatename, deleteTemplate, queryCreateTemplate, queryUsuallyTemplate, queryTempalteList
+)
 from services.templates import TemplateService
+from ai.llm.llm_factory import LLMFactory
 from utils.logger import mylog
 from pydantic import ValidationError
-from fastapi import FastAPI
 from config import get_async_db
-from pydantic import BaseModel
-from sqlalchemy import Date, and_, case, cast, create_engine, Column, Integer, String, delete, func, select, types
+from sqlalchemy import Date, and_, case, cast, Column, Integer, String, delete, func, select, types
 from sqlalchemy import or_, update, BigInteger
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from sqlalchemy.ext.asyncio import AsyncSession,async_sessionmaker,create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import aliased
 
 
 # 创建一个FastAPI的APIRouter实例，用于定义模板相关的API路由
@@ -33,107 +35,50 @@ template_service = TemplateService()
 @router.post("/create", response_model=TemplateContentResponse)
 async def create_template(request_data: TemplateCreateNeed, request: Request):
     """
-    创建一个新的模板
-
-    这个API端点用于创建一个新的模板。它会调用模板服务的create_template方法，
-    并返回一个TemplateContentResponse对象，该对象包含新创建的模板的详细信息。
-
-    Args:
-        request_data (TemplateCreateNeed): 包含创建模板所需的数据
-        request (Request): 请求对象，用于获取客户端的IP地址
-
-    Returns:
-        TemplateContentResponse: 包含新创建的模板的详细信息
+    创建模板（不保存到数据库）
+    
+    这个接口用于临时生成模板预览，不保存到数据库
     """
-    mylog.info("*"*100)    
-    mylog.info(f"开始处理生成模板请求，源IP: {request.client.host}")
-    mylog.info(f"请求数据: {request_data}")
+    mylog.info("=== 开始处理生成模板请求（不保存） ===")
+    mylog.info(f"源IP: {request.client.host}, 请求数据: {request_data}")
     try:
-        # 调用模板服务的create_template方法，并获取返回的数据
+        # === 调用模板服务生成模板 ===
         data = await template_service.create_template(request_data)
         response = TemplateContentResponse(code=200, message="模板创建成功", type="success", data=data)
-        mylog.info(f"模板创建成功: {response}")
+        mylog.info("=== 模板创建成功 ===")
         return response
     except ValidationError as e:
         mylog.error(f"数据验证错误: {e.json()}")
         raise HTTPException(status_code=422, detail=e.errors())
     except Exception as e:
-        mylog.error(f"处理请求时发生错误: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        error_msg = f"创建模板时发生错误: {str(e)}"
+        mylog.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @router.post("/refresh", response_model=TemplateContentResponse)
 async def refresh_template(request: Request, refreshNeed: TemplateRefreshNeed):
     """
-    刷新现有的模板
-
-    这个API端点用于刷新现有的模板。它会调用模板服务的refresh_template方法，
-    并返回一个TemplateContentResponse对象，该对象包含刷新后的模板的详细信息。
-
-    Args:
-        request (Request): 请求对象，用于获取客户端的IP地址
-        refreshNeed (TemplateRefreshNeed): 包含需要刷新的模板数据
-    Returns:
-        TemplateContentResponse: 包含刷新后的模板的详细信息
+    刷新模板（不保存到数据库）
+    
+    这个接口用于刷新现有模板，不保存到数据库
     """
-    mylog.info("*"*100)
-    mylog.info(f"开始处理刷新模板请求，源IP: {request.client.host}")
-    mylog.info(f"请求数据: {refreshNeed}")
+    mylog.info("=== 开始处理刷新模板请求 ===")
+    mylog.info(f"源IP: {request.client.host}, 请求数据: {refreshNeed}")
     try:
-        # 调用模板服务的refresh_template方法，并获取返回的数据
+        # === 调用模板服务刷新模板 ===
         data = await template_service.refresh_template(refreshNeed)
         response = TemplateContentResponse(code=200, message="模板刷新成功", type="success", data=data)
+        mylog.info("=== 模板刷新成功 ===")
         return response
     except ValidationError as e:
         mylog.error(f"数据验证错误: {e.json()}")
         raise HTTPException(status_code=422, detail=e.errors())
     except Exception as e:
-        mylog.error(f"处理请求时发生错误: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        error_msg = f"刷新模板时发生错误: {str(e)}"
+        mylog.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
     
-Base = declarative_base()
-class WritingTemplate(Base):
-    __tablename__ = 'ai_writing_template'
-    user_id = Column(String(255), comment='用户id')
-    template_id = Column(Integer, primary_key=True, autoincrement=True, comment='模板编号')
-    template_name = Column(String(255), comment='模板名称')
-    template_type = Column(String(10), comment='模板类型,S-解决方案')
-    template_desc = Column(String(255), comment='模板描述')
-    status_cd = Column(String(1), comment='是否生效,Y有效,N无效')
-    show_order = Column(Integer, comment='顺序')
-    create_time = Column(Date, comment='创建时间')
-
-
-class AiTemplateTitle(Base):
-    __tablename__ = 'ai_template_title'
-    title_id = Column(BigInteger, primary_key=True, autoincrement=True, comment='标题编号')
-    template_id = Column(BigInteger, comment='模板编号')
-    parent_id = Column(BigInteger, comment='父标题编号')
-    title_name = Column(String(255), comment='标题名称')
-    show_order = Column(Integer, comment='顺序')
-    writing_requirement = Column(String(2000), comment='写作要求')
-    status_cd = Column(String(1), comment='有效性，Y有效，N无效')
-
 # 统一使用全局配置的 get_async_db，避免环境不一致
-
-
-class TemplateQueryRequest(BaseModel):
-    userId: str = None
-    templateId: int = None
-
-
-class TemplateSaveRequest(BaseModel):
-    userId: str
-    titleName: str
-    writingRequirement: Optional[str] = None
-    originalTemplate: list
-
-
-class TemplateUpdateRequest(BaseModel):
-    templateId: str
-    userId: str
-    titleName: str = None
-    writingRequirement: Optional[str] = None
-    originalTemplate: list = None  # 将 originalTemplate 类型改为 Any
 
 
 # 去除同步 Session，会话统一走异步依赖注入
@@ -267,26 +212,6 @@ async def template_update(request_data: TemplateUpdateRequest,db: AsyncSession =
                 {"code": 500, "message": f"模板数据更新失败，请重试或联系系统管理员", "type": "failed"})
         )
 
-async def delete_template(db: AsyncSession, user_id, template_id):
-    try:
-        # 删除模板
-        # 构建查询，匹配userId和templateId
-        stmt = select(WritingTemplate).filter(
-            WritingTemplate.user_id == user_id,
-            WritingTemplate.template_id == template_id
-        )
-        result = await db.execute(stmt)
-        templateIfo = result.scalar_one_or_none()
-        if templateIfo:
-            await db.delete(templateIfo)
-            await db.commit()
-            return True  # 删除成功
-        else:
-            return False  # 没有找到匹配的模板，删除失败
-    except Exception as e:
-        error_msg = f"模板删除发生异常: {str(e)}"
-        mylog.error(error_msg)
-
 async def delete_template_title(db: AsyncSession,template_id):
     try:
         # 删除模板,构建查询，匹配templateId
@@ -338,10 +263,6 @@ async def template_delete(request_data: TemplateUpdateRequest,db: AsyncSession =
             content=jsonable_encoder(
                 {"code": 200, "message": f"模板删除成功", "type": "success"})
         )
-        # if await delete_template_title(db, template_id) and await delete_template(db, user_id, template_id):
-        #     return return_json(True, "模板删除成功")
-        # else:
-        #     return return_json(False, "模板删除失败")
 
     except Exception as e:
         error_msg = f"模板删除接口发生异常: {str(e)}"
@@ -408,49 +329,35 @@ def build_tree(data):
 
 
 
-async def title_query_by_templateName(db: AsyncSession, template_name, user_id):
-    try:
-        if template_name:
-            stmt = select(WritingTemplate).filter((WritingTemplate.user_id == user_id) & (WritingTemplate.template_name.like(f'%{template_name}%'))).all()
-        else:
-            stmt = select(WritingTemplate).filter((WritingTemplate.user_id == user_id)).all()
-        result = await db.execute(stmt)
-        results = result.scalars().all()
-        return results
-    except Exception as e:
-        error_msg = f"标题数据查询接口发生异常: {str(e)}"
-        mylog.error(error_msg)
-    finally:
-        pass
 
 
 
 
-class AICreateTemplate(Base):
-    __tablename__ = 'ai_create_template'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True, comment='主键')
-    user_id = Column(String(255), nullable=False, comment='用户id')
-    template_name = Column(String(255), comment='模板名称')
-    create_template = Column(String, comment='所生成模板')
-    create_time = Column(Date, nullable=False, comment='生成时间')
-    update_time = Column(Date, comment='更新时间')
-    update_id = Column(String(255), comment='更新人')
-    show_cd = Column(String(255), nullable=False,comment='模板是否有效（Y-有效，N-无效）')
-
-class TemplateCreate(BaseModel):
-    titleName: str
-    writingRequirement: str
-    userId: str
-    templateName: str
 
 @router.post("/createTemplateEntryTable", response_model=TemplateContentResponse)
-async def create_template(request_data: TemplateCreate,db: AsyncSession = Depends(get_async_db)):
-    mylog.info("*"*100)    
+async def create_template_entry_table(request_data: TemplateCreate, db: AsyncSession = Depends(get_async_db)):
+    """
+    创建模板并保存到数据库
+    
+    这个接口用于生成模板并保存到 ai_create_template 表
+    """
+    mylog.info("=== 开始处理创建模板并保存请求 ===")
+    mylog.info(f"请求数据: {request_data}")
     try:
-        # 调用模板服务的create_template方法，并获取返回的数据
-        data = await template_service.create_template_entryTable(request_data)
-        response = TemplateContentResponse(code=200, message="模板创建成功", type="success", data=data)
+        # === 获取用户的模型配置 ===
+        if request_data.modelId:
+            llm = await LLMFactory.get_llm_by_id(db, request_data.modelId)
+            if not llm:
+                raise HTTPException(status_code=404, detail="未找到指定的模型配置")
+        else:
+            llm = await LLMFactory.get_default_llm(db, user_id=request_data.userId)
+            if not llm:
+                raise HTTPException(status_code=404, detail="未找到可用的模型配置，请先配置模型")
+        
+        # === 调用模板服务生成模板 ===
+        data = await template_service.create_template_entryTable(request_data, llm)
+        
+        # === 保存模板到数据库 ===
         create_template_json = json.dumps(data, ensure_ascii=False)
         new_template_data = {
             'user_id': request_data.userId,
@@ -460,23 +367,31 @@ async def create_template(request_data: TemplateCreate,db: AsyncSession = Depend
             'show_cd': 'Y'
         }
         new_template = AICreateTemplate(**new_template_data)
-
         db.add(new_template)
         await db.commit()
         await db.refresh(new_template)
-        mylog.info(f"模板创建成功: {response}")
+        
+        response = TemplateContentResponse(code=200, message="模板创建成功", type="success", data=data)
+        mylog.info("=== 模板创建并保存成功 ===")
         return response
     except ValidationError as e:
         mylog.error(f"数据验证错误: {e.json()}")
         raise HTTPException(status_code=422, detail=e.errors())
+    except ValueError as e:
+        error_msg = str(e)
+        mylog.error(f"业务逻辑错误: {error_msg}")
+        raise HTTPException(status_code=400, detail=error_msg)
     except Exception as e:
-        mylog.error(f"处理请求时发生错误: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        error_str = str(e)
+        if "401" in error_str or "AuthenticationError" in error_str or "令牌状态不可用" in error_str or "认证失败" in error_str:
+            error_msg = "AI模型API认证失败，请检查API密钥配置"
+            mylog.error(f"AI模型认证错误: {error_str}")
+            raise HTTPException(status_code=401, detail=error_msg)
+        error_msg = f"创建模板时发生错误: {error_str}"
+        mylog.error(error_msg, exc_info=True)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
-class reTemplatename(BaseModel):
-    id: int
-    template_name: str = None
 
 @router.post("/reCreateTemplateName")
 async def re_filename(re_TemplateName: reTemplatename, db: AsyncSession = Depends(get_async_db)):
@@ -510,9 +425,6 @@ async def re_filename(re_TemplateName: reTemplatename, db: AsyncSession = Depend
     )
 
 
-class deleteTemplate(BaseModel):
-    id: int
-
 @router.post("/deleteCreateTemplate")
 async def file_delete(delete_template: deleteTemplate, db: AsyncSession = Depends(get_async_db)):
     kwargs = {
@@ -529,11 +441,6 @@ async def file_delete(delete_template: deleteTemplate, db: AsyncSession = Depend
         content=jsonable_encoder(
             {"code": 200, "message": f"删除生成模板成功", "type": "success"})
     )
-
-class queryCreateTemplate(BaseModel):
-    userId: str
-    pageNum: int = None
-    pageSize: int = None
 
 @router.post("/queryCreateTemplateList")
 async def query_file_list(query_template: queryCreateTemplate, db: AsyncSession = Depends(get_async_db)):
@@ -570,18 +477,6 @@ async def query_file_list(query_template: queryCreateTemplate, db: AsyncSession 
             content=jsonable_encoder({"code": 500, "message": str(e), "type": "error"})
         )
 
-
-
-from sqlalchemy.orm import aliased
-class AIUsuallyTemplate(Base):
-    __tablename__ = 'ai_usually_template'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True, comment='主键')
-    user_id = Column(String(255), nullable=False, comment='用户id')
-    template_id = Column(String(255), comment='模板id')
-    use_template = Column(String, comment='使用的模板')
-    use_count = Column(String(255), comment='使用次数')
-    use_time = Column(Date, comment='最近使用时间')
 
 async def query_usually_template_list(user_id, db: AsyncSession):
 
@@ -686,9 +581,6 @@ async def query_usually_template_list(user_id, db: AsyncSession):
     ]
     return templates_list
 
-class queryUsuallyTemplate(BaseModel):
-    userId: str
-
 @router.post("/queryUsuallyTemplate")
 async def query_file_list(query_usually_template: queryUsuallyTemplate, db: AsyncSession = Depends(get_async_db)):
     try:
@@ -747,9 +639,6 @@ def format_create_time(create_time):
         return None
     # 格式化日期
     return create_time.strftime("%Y-%m-%d %H:%M:%S")
-class queryTempalteList(BaseModel):
-    userId: str
-    templateTitle: Optional[str] = None
 @router.post("/queryTemplateList")
 async def ai_solution_query(query_template_list: queryTempalteList,db: AsyncSession = Depends(get_async_db)):
     try:

@@ -2,31 +2,53 @@ import json
 from models.templates import TemplateContentResponse, TemplateCreateNeed, TemplateRefreshNeed
 from utils.template_load import markdown_to_json, json_to_markdown
 from ai.agents import template_generator, template_refresher
-from utils.logger import mylog  # 导入日志记录器
+from utils.logger import mylog
+from langchain_core.runnables import RunnablePassthrough
+from templates.ai_templates.template_generate import template_generate_prompt
+from utils.tools import extract_template_generate
 
 class TemplateService:
     def __init__(self):
         pass
 
     async def create_template(self, createNeed: TemplateCreateNeed) -> TemplateContentResponse:
-        mylog.info("创建模板请求: %s", createNeed)
-        markdown_result = await template_generator.ainvoke({
-            "titleName": createNeed.titleName,
-            "writingRequirement": createNeed.writingRequirement
-        })
-        json_result = markdown_to_json(markdown_result)
-        json_result_dict = json.loads(json_result)
-        return TemplateContentResponse(code=200, type="success", data=json_result_dict).dict()
+        try:
+            mylog.info("创建模板请求: %s", createNeed)
+            markdown_result = await template_generator.ainvoke({
+                "titleName": createNeed.titleName,
+                "writingRequirement": createNeed.writingRequirement
+            })
+            json_result = markdown_to_json(markdown_result)
+            json_result_dict = json.loads(json_result)
+            return TemplateContentResponse(code=200, type="success", data=json_result_dict).dict()
+        except Exception as e:
+            error_str = str(e)
+            if "401" in error_str or "AuthenticationError" in error_str or "令牌状态不可用" in error_str:
+                raise ValueError("AI模型API认证失败，请检查API密钥配置")
+            raise
 
-    async def create_template_entryTable(self, createNeed) -> TemplateContentResponse:
-        mylog.info("创建模板请求: %s", createNeed)
-        markdown_result = await template_generator.ainvoke({
-            "titleName": createNeed.titleName,
-            "writingRequirement": createNeed.writingRequirement
-        })
-        json_result = markdown_to_json(markdown_result)
-        json_result_dict = json.loads(json_result)
-        return json_result_dict
+    async def create_template_entryTable(self, createNeed, llm) -> TemplateContentResponse:
+        try:
+            mylog.info("创建模板请求: %s", createNeed)
+            # === 使用传入的 llm 动态创建 template_generator ===
+            dynamic_template_generator = (
+                {"titleName": RunnablePassthrough(), "writingRequirement": RunnablePassthrough()} 
+                | template_generate_prompt 
+                | llm 
+                | extract_template_generate
+            )
+            markdown_result = await dynamic_template_generator.ainvoke({
+                "titleName": createNeed.titleName,
+                "writingRequirement": createNeed.writingRequirement
+            })
+            json_result = markdown_to_json(markdown_result)
+            json_result_dict = json.loads(json_result)
+            return json_result_dict
+        except Exception as e:
+            error_str = str(e)
+            if "401" in error_str or "AuthenticationError" in error_str or "令牌状态不可用" in error_str:
+                raise ValueError("AI模型API认证失败，请检查API密钥配置")
+            raise
     
     async def refresh_template(self, refreshNeed: TemplateRefreshNeed) -> dict:
         try:
