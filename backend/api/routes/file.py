@@ -22,6 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from config import AsyncSessionLocal
 from config import get_async_db
 from docx import Document
 from io import BytesIO
@@ -60,7 +61,7 @@ try:
 except (OSError, PermissionError):
     UPLOAD_FOLDER = Path('./uploads')
     UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'doc'}
+ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf', 'docx', 'doc'}
 
 class reFilename(BaseModel):
     file_id: int
@@ -134,6 +135,13 @@ async def count_characters_in_pdf(file_stream):
     for page in reader.pages:
         text += page.extract_text() or ""
     return len(text)
+
+async def count_characters_in_text_like(file_stream):
+    try:
+        text = file_stream.decode('utf-8', errors='ignore')
+    except Exception:
+        text = ''
+    return len(text)
 # 文件大小限制 10000个字符
 MAX_FILE_SIZE = 10000  
 @router.post("/upload")
@@ -143,55 +151,49 @@ async def upload_file(
     createName: str = Form(...),
     db: AsyncSession = Depends(get_async_db)
 ):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="未找到上传文件，请重新上传")
+    try:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="未找到上传文件，请重新上传")
 
-    # 获取底层文件对象
-    file_stream = await file.read()
-    # 检查文件类型并计算字符数
-    if file.filename.endswith('.docx'):
-        character_count = await count_characters_in_docx(file_stream)
-    elif file.filename.endswith('.pdf'):
-        character_count = await count_characters_in_pdf(file_stream)
-
-    # 检查字符数是否超过限制
-    if character_count > MAX_FILE_SIZE:
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder(
-                {"code": 400, "message": "文件字符数超过10000字符，无法上传", "type": "success"})
-        )
-    if file and allowed_file(file.filename):
+        # 读取上传内容
+        file_stream = await file.read()
         filename = file.filename
-        extension = file.filename.split('.')[-1]
-        # 获取唯一文件名
-        unique_filename = await get_unique_filename(extension)
+        if not allowed_file(filename):
+            raise HTTPException(status_code=415, detail="不支持的文件类型")
 
+        # 推断扩展名（小写）
+        extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+        # 仅统计长度用于日志，不做拦截
+        try:
+            if extension == 'docx':
+                _ = await count_characters_in_docx(file_stream)
+            elif extension == 'pdf':
+                _ = await count_characters_in_pdf(file_stream)
+            elif extension in ('txt', 'md'):
+                _ = await count_characters_in_text_like(file_stream)
+        except Exception:
+            pass
+
+        # 生成唯一文件名并写入磁盘
+        unique_filename = await get_unique_filename(extension or 'bin')
         file_location = str((UPLOAD_FOLDER / unique_filename).resolve())
-
-                # 写入文件
         with open(file_location, "wb") as file_object:
             file_object.write(file_stream)
             file_object.flush()
-            os.fsync(file_object.fileno())  # 确保数据写入磁盘
-        # with open(file_location, "wb+") as file_object:
-        #    file_object.write(await file.read())
+            os.fsync(file_object.fileno())
 
         file_size = os.path.getsize(file_location)
-        mylog.info(f"写入后的文件大小: {file_size} 字节")
-        
+        mylog.info(f"写入后的文件大小: {file_size} 字节, 路径: {file_location}")
         if file_size == 0:
             raise HTTPException(status_code=500, detail="文件写入失败，文件大小为0")
-        
-        new_file_info = await insert_file_data(db, filename.rsplit('.', 1)[0], unique_filename, 
-                                             file_location, createNo, createNo, createName)
-        with open(file_location, "rb") as test_file:
-            # 尝试读取文件开头
-            header = test_file.read(100)
-            mylog.info(f"文件头部数据: {header[:10]}")  # 打印前10个字节
-        # 根据文件保存路径对文件进行读取获取文件内容
+
+        # 入库记录 & 启动异步解析
+        new_file_info = await insert_file_data(db, filename.rsplit('.', 1)[0], unique_filename,
+                                               file_location, createNo, createNo, createName)
         asyncio.create_task(background_parse(new_file_info.file_id, file_location))
 
+        # 规范化时间字段
         if isinstance(new_file_info.create_date, str):
             new_file_info.create_date = datetime.fromisoformat(new_file_info.create_date.replace('Z', '+00:00'))
         new_file_info.create_date = new_file_info.create_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -200,13 +202,17 @@ async def upload_file(
             "file_name": new_file_info.file_name,
             "create_date": new_file_info.create_date,
         }
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder(
-                {"code": 200, "message": "文件上传成功", "type": "success", "data": data})
-        )
-    else:
-        raise HTTPException(status_code=400, detail="File type not allowed")
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 200, "message": "文件上传成功", "type": "success", "data": data
+        }))
+    except HTTPException:
+        # 直接抛出 HTTPException 让 FastAPI 处理状态码
+        raise
+    except Exception as e:
+        mylog.error(f"文件上传发生异常: {str(e)}", exc_info=True)
+        return JSONResponse(status_code=500, content=jsonable_encoder({
+            "code": 500, "message": "文件上传失败，请重试", "type": "error"
+        }))
 
 async def parse_file(db: AsyncSession, file_id: Integer, file_location: str):
     try:

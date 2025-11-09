@@ -384,8 +384,14 @@ async def create_template_entry_table(request_data: TemplateCreate, db: AsyncSes
     except Exception as e:
         error_str = str(e)
         if "401" in error_str or "AuthenticationError" in error_str or "令牌状态不可用" in error_str or "认证失败" in error_str:
-            error_msg = "AI模型API认证失败，请检查API密钥配置"
-            mylog.error(f"AI模型认证错误: {error_str}")
+            # 追加打印本次所用模型配置要点，便于排查
+            try:
+                cfg_id = getattr(llm, 'model_name', None)  # ChatOpenAI 不含 cfg，打印其关键字段
+            except Exception:
+                cfg_id = None
+            mylog.error("AI模型认证错误: %s", error_str)
+            mylog.error("本次请求模型信息: model=%s, base_url=%s", getattr(llm, 'model', None), getattr(llm, 'openai_api_base', None))
+            error_msg = "AI模型API认证失败，请检查API密钥配置或网关可用性"
             raise HTTPException(status_code=401, detail=error_msg)
         error_msg = f"创建模板时发生错误: {error_str}"
         mylog.error(error_msg, exc_info=True)

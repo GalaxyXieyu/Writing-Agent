@@ -2,6 +2,12 @@
 	"$schema": "https://shadcn-vue.com/schema.json",
 	"style": "default",
 	"typescript": false,
+	"registries": {
+		"@shadcn": "https://ui.shadcn.com/r",
+		"@aceternity": "https://ui.aceternity.com/registry",
+		"@jollyui": "https://www.jollyui.dev/r",
+		"@diceui": "https://www.diceui.com/r"
+	},
 	"tailwind": {
 		"config": "tailwind.config.js",
 		"css": "src/assets/index.css",

@@ -4,20 +4,11 @@ import warnings
 from utils.logger import mylog
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from templates.ai_templates.planner_prompt import planner_prompt
 
 warnings.filterwarnings('ignore')
-# 初始化大模型
-gpt2 = ChatOpenAI(
-    temperature=0.7,
-    model="gpt-4o-eus2",
-    openai_api_key="sk-ZFEd6Am3xCHJZB5BAd2bAa7c2fB749Eb86Ba807dC3D3D192",
-    openai_api_base="http://127.0.0.1:13000/v1"
-)
-llm = gpt2
 
 
 def extract_planner(data2):
@@ -57,4 +48,8 @@ parser = PydanticOutputParser(pydantic_object=Plan)
 
 planner_prompt1 = planner_prompt
 
-planner = {"query": RunnablePassthrough()} | planner_prompt1 | llm | extract_planner
+def make_planner(llm):
+    """
+    基于传入的 llm 构建 planner runnable。
+    """
+    return {"query": RunnablePassthrough()} | planner_prompt1 | llm | extract_planner

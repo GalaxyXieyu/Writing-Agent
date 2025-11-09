@@ -1,6 +1,11 @@
 <template>
   <div class="space-y-4">
-    <div v-for="(item, index) in titleData" :key="index" class="group rounded-lg border border-border bg-card shadow-sm transition-all hover:shadow-md">
+    <div
+      v-for="(item, index) in titleData"
+      :key="index"
+      :id="`first-${item.titleId ?? index}`"
+      class="group rounded-lg border border-border bg-card shadow-sm transition-all hover:shadow-md"
+    >
       <!-- 标题头部 -->
       <div class="flex items-center justify-between border-b border-border bg-muted/50 px-5 py-3.5">
         <div class="flex items-center gap-3">
@@ -72,6 +77,7 @@
           <div 
             v-for="(childrenItem, childrenIndex) in item.children" 
             :key="childrenIndex" 
+            :id="`second-${childrenItem.titleId ?? childrenIndex}`"
             class="rounded-md border border-border bg-muted/30 p-4"
           >
             <div class="mb-4 flex items-center justify-between">
@@ -125,6 +131,7 @@
               <div 
                 v-for="(thirdLevelItem, thirdLevelIndex) in childrenItem.children" 
                 :key="thirdLevelIndex" 
+                :id="`third-${thirdLevelItem.titleId ?? thirdLevelIndex}`"
                 class="rounded-md border border-border bg-background p-4"
               >
                 <div class="mb-3 flex items-center justify-between">

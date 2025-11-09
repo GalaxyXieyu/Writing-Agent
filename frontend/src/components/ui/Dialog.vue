@@ -27,7 +27,7 @@
 					<div
 						v-if="modelValue"
 						:class="cn(
-							'relative z-10 grid w-full max-w-lg gap-4 rounded-lg border bg-white dark:bg-gray-900 p-6 shadow-2xl',
+							'relative z-10 flex w-full max-w-lg max-h-[85vh] overflow-hidden flex-col rounded-lg border bg-white dark:bg-gray-900 p-6 shadow-2xl',
 							className
 						)"
 						@click.stop

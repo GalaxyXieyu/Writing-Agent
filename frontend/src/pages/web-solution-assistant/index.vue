@@ -2,9 +2,9 @@
 
     <div class="flex h-full gap-responsive bg-background p-responsive overflow-hidden">
       <!-- 左侧表单区域 -->
-      <div class="flex w-full flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[400px]">
+      <div class="flex w-full h-full min-h-0 flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[400px]">
         <!-- 模板选择区域 -->
-        <Card class="flex flex-col flex-shrink-0">
+        <Card class="flex flex-col flex-1 min-h-0">
           <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
             <CardTitle class="text-responsive-base font-semibold">写作模板</CardTitle>
             <Button variant="ghost" size="sm" @click="lookTemplateDialog" class="h-auto p-0 text-primary text-responsive-sm">
@@ -14,12 +14,21 @@
               </svg>
             </Button>
           </CardHeader>
-          <CardContent class="flex flex-col gap-4 px-responsive pb-responsive">
-            <div class="max-h-responsive overflow-y-auto border-y">
+          <CardContent class="flex flex-1 min-h-0 flex-col gap-4 px-responsive pb-responsive">
+            <div class="flex items-center gap-2">
+              <Input v-model="search" placeholder="搜索模板" class="flex-1" />
+              <el-select v-model="leftFilterType" size="small" style="width: 140px">
+                <el-option label="全部" value="all" />
+                <el-option label="写作模板" value="1" />
+                <el-option label="文件模板" value="2" />
+                <el-option label="AI生成" value="3" />
+              </el-select>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto border-y">
               <el-table 
                 ref="tableRef" 
                 :key="tableKey" 
-                :data="usuallyTemplateData"  
+                :data="filteredLeftList"  
                 highlight-current-row
                 @current-change="chooseTemplateFun"
                 :row-key="getRowKey"
@@ -33,7 +42,7 @@
                 </el-table-column>
               </el-table>
             </div>
-            <Button variant="outline" @click="uploadFiles" class="w-full">
+            <Button variant="outline" @click="openBuilder" class="w-full">
               生成自定义模板
             </Button>
           </CardContent>
@@ -42,8 +51,22 @@
         <!-- 表单输入区域 -->
         <Card class="flex flex-1 flex-col overflow-hidden min-h-0">
           <CardContent class="flex flex-1 flex-col gap-responsive overflow-y-auto p-responsive min-h-0 pb-24">
+            <!-- 顶部：模型选择 + 全屏大纲入口 -->
+            <div class="flex items-center justify-between flex-shrink-0 mt-1 pt-2 pb-2 border-b border-border">
+              <div class="flex items-center gap-4">
+                <Label class="text-responsive-sm font-medium text-foreground/90 whitespace-nowrap flex-shrink-0 min-w-[80px]">模型选择</Label>
+                <ModelSelector v-model="currentModelId" @manage="openModelManage" />
+              </div>
+              <Button variant="outline" size="sm" @click="showOutlineFullscreen = true" class="gap-1">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/>
+                </svg>
+                编辑大纲
+              </Button>
+            </div>
+
             <!-- 文章标题 -->
-            <div class="space-y-2 flex-shrink-0">
+            <div v-if="!showOutlineFullscreen" class="space-y-2 flex-shrink-0 mt-4">
               <div class="flex items-center justify-between">
                 <Label for="template-title" class="text-responsive-sm font-medium">文章标题</Label>
                 <Button variant="ghost" size="sm" @click="saveTemplateDialog" class="h-auto p-0 text-primary text-responsive-xs">
@@ -61,7 +84,7 @@
             </div>
 
             <!-- 文章要求 -->
-            <div class="space-y-2 flex-shrink-0">
+            <div v-if="!showOutlineFullscreen" class="space-y-2 flex-shrink-0 mt-4">
               <Label for="article-requirement" class="text-responsive-sm font-medium">文章要求</Label>
               <Textarea
                 id="article-requirement"
@@ -73,15 +96,42 @@
               <p class="text-right text-responsive-xs text-muted-foreground">{{ articleRequirement.length }}/100</p>
             </div>
 
-            <!-- 模型选择区域 -->
-            <div class="flex-shrink-0 flex items-center gap-4 border-t border-border pt-4 pb-1">
-              <Label class="text-responsive-sm font-medium text-foreground/90 whitespace-nowrap flex-shrink-0 min-w-[80px]">模型选择</Label>
-              <ModelSelector v-model="currentModelId" @manage="openModelManage" />
-            </div>
-
-            <!-- 标题输入区域 -->
-            <div class="flex-1 min-h-0 overflow-y-auto" v-loading="loading" element-loading-text="Loading...">
-              <title-input :title-data="titleData"></title-input>
+            <!-- 大纲列表 + 编辑区（与标题/要求同层级，统一滚动） -->
+            <div class="mt-4" v-loading="loading" element-loading-text="Loading...">
+              <!-- 大纲目录（仅内容决定高度，不设内部滚动） -->
+              <div class="border rounded-lg p-2">
+                <div class="flex items-center justify-between mb-2">
+                  <Label class="text-responsive-sm font-medium">大纲列表</Label>
+                  <div class="w-52">
+                    <Input v-model="outlineSearch" placeholder="搜索标题/要求" />
+                  </div>
+                </div>
+                <ul class="space-y-1 text-sm">
+                  <li v-for="(n1, i1) in filteredOutline" :key="`mini-tree-1-${i1}`">
+                    <div class="px-2 py-1 rounded hover:bg-accent cursor-pointer" @click="scrollToId(`first-${n1.id}`)">
+                      {{ n1.name || `一级标题 ${i1+1}` }}
+                    </div>
+                    <ul v-if="n1.children?.length" class="ml-3 mt-1 space-y-1">
+                      <li v-for="(n2, i2) in n1.children" :key="`mini-tree-2-${i1}-${i2}`">
+                        <div class="px-2 py-1 rounded hover:bg-accent cursor-pointer" @click="scrollToId(`second-${n2.id}`)">
+                          {{ n2.name || `二级标题 ${i1+1}.${i2+1}` }}
+                        </div>
+                        <ul v-if="n2.children?.length" class="ml-3 mt-1 space-y-1">
+                          <li v-for="(n3, i3) in n2.children" :key="`mini-tree-3-${i1}-${i2}-${i3}`">
+                            <div class="px-2 py-1 rounded hover:bg-accent cursor-pointer" @click="scrollToId(`third-${n3.id}`)">
+                              {{ n3.name || `三级标题 ${i1+1}.${i2+1}.${i3+1}` }}
+                            </div>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+              <!-- 编辑区（不设置overflow，与外层同一滚动） -->
+              <div class="mt-3">
+                <title-input :title-data="titleData"></title-input>
+              </div>
             </div>
           </CardContent>
 
@@ -116,6 +166,61 @@
         />
       </div>
     </div>
+
+    <!-- 大纲编辑弹窗（居中，限制高度，内容区滚动，底部固定） -->
+    <Dialog v-model="showOutlineFullscreen" :closeOnOverlay="true" className="w-[80vw] max-w-[1100px] max-h-[85vh] p-0 overflow-hidden">
+      <div class="grid grid-rows-[auto,1fr,auto] h-full overflow-hidden">
+        <DialogHeader class="px-4 py-3">
+          <DialogTitle>编辑大纲</DialogTitle>
+        </DialogHeader>
+        <!-- 内容区：统一由该容器滚动，避免多层滚动冲突，并为底部操作条预留空间 -->
+        <div class="flex min-h-0 overflow-y-auto pb-24">
+          <!-- 左侧目录树 -->
+          <div class="hidden md:flex md:w-64 lg:w-72 border-r border-border flex-col min-h-0">
+            <div class="p-3 border-b">
+              <Input v-model="outlineSearch" placeholder="搜索标题/要求" />
+            </div>
+            <div class="flex-1 p-2">
+              <ul class="space-y-1 text-sm">
+                <li v-for="(n1, i1) in filteredOutline" :key="`tree-1-${i1}`">
+                  <button class="w-full text-left px-2 py-1 rounded hover:bg-accent" @click="scrollToId(`first-${n1.id}`)">{{ n1.name || `一级标题 ${i1+1}` }}</button>
+                  <ul v-if="n1.children?.length" class="ml-3 mt-1 space-y-1">
+                    <li v-for="(n2, i2) in n1.children" :key="`tree-2-${i1}-${i2}`">
+                      <button class="w-full text-left px-2 py-1 rounded hover:bg-accent" @click="scrollToId(`second-${n2.id}`)">{{ n2.name || `二级标题 ${i1+1}.${i2+1}` }}</button>
+                      <ul v-if="n2.children?.length" class="ml-3 mt-1 space-y-1">
+                        <li v-for="(n3, i3) in n2.children" :key="`tree-3-${i1}-${i2}-${i3}`">
+                          <button class="w-full text-left px-2 py-1 rounded hover:bg-accent" @click="scrollToId(`third-${n3.id}`)">{{ n3.name || `三级标题 ${i1+1}.${i2+1}.${i3+1}` }}</button>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <!-- 右侧编辑区 -->
+          <div class="flex-1 p-4">
+            <div class="max-w-5xl mx-auto space-y-4">
+              <div class="space-y-2">
+                <Label class="text-sm font-medium">文章标题</Label>
+                <Input v-model="templateTitle" placeholder="输入文章标题" />
+              </div>
+              <div class="space-y-2">
+                <Label class="text-sm font-medium">文章要求</Label>
+                <Textarea v-model="articleRequirement" placeholder="请输入文章要求" class="min-h-[100px]" />
+              </div>
+              <TitleInput :title-data="titleData" />
+            </div>
+          </div>
+        </div>
+        <!-- 底部操作条固定在弹窗底部上方，不遮挡内容 -->
+        <DialogFooter class="px-4 py-3 border-t bg-background sticky bottom-0 z-20">
+          <Button variant="outline" @click="showOutlineFullscreen = false">关闭</Button>
+          <Button variant="outline" @click="saveTemplateDialog">保存大纲</Button>
+          <Button @click="confirmOutlineFromFullscreen">应用并关闭</Button>
+        </DialogFooter>
+      </div>
+    </Dialog>
 
 
     <Dialog v-model="showSaveTemplateDialog" className="max-w-md">
@@ -215,6 +320,15 @@
         </div>
       </template>
   </el-dialog>
+
+  <!-- 新版生成自定义模板对话框（shadcn 风格） -->
+  <TemplateBuilderDialog
+    v-model:visible="builderVisible"
+    :model-id="createTemplateModelId"
+    @applied="handleAppliedTemplate"
+    @openLibrary="openLibraryFromResult"
+    @manageModel="openModelManage"
+  />
   <Dialog v-model="reNameVisible" className="max-w-md">
     <DialogHeader>
       <DialogTitle>重命名</DialogTitle>
@@ -247,6 +361,14 @@
     </div>
     <div v-if="isFastCreate">
       <el-form v-model="createTemplateFrom">
+        <el-form-item style="margin-left: 8%">
+          <template #label>
+            <span style="color:transparent;">*</span> 模型选择：
+          </template>
+          <div style="width: 72%">
+            <ModelSelector v-model="createTemplateModelId" @manage="openModelManage" />
+          </div>
+        </el-form-item>
         <el-form-item style="margin-top: 2%;margin-left: 8%">
           <template #label>
             <span style="color:red;">*</span> 文章标题：
@@ -290,7 +412,7 @@
             :auto-upload="true"
             :http-request="uploadSolutionFile"
             :before-upload="handleBeforeUpload"
-            accept=".pdf,.docx"
+            accept=".pdf,.docx,.txt,.md"
             class="custom-upload-box"
         >
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
@@ -300,14 +422,14 @@
           <template #tip>
             <div style="font-size: 14px;margin-top: 1vh">
               <el-icon style="margin-bottom: 3px;" size="large"><Warning /></el-icon>
-              支持PDF、DOCX格式，单个文件尽量不超过5MB
+              支持 PDF、DOCX、TXT、MD 格式，单个文件尽量不超过 50MB
             </div>
             <div class="demo-progress" v-if="percentage !== 0" style="margin-top: 1vh">
               <img
                   v-if="fileShowName.includes('docx') || fileShowName.includes('doc')"
                   src="./iconPng/file_word.png" alt="PNG Icon" class="file-icon" />
               <img
-                  v-if="fileShowName.includes('pdf')"
+                  v-if="fileShowName.includes('pdf') || fileShowName.includes('txt') || fileShowName.includes('md')"
                   src="./iconPng/file_pdf.png" alt="PNG Icon" class="file-icon" />
               {{fileShowName}}
               <el-progress  :percentage="percentage" :status="exception"/>
@@ -403,6 +525,7 @@ import DialogHeader from '@/components/ui/DialogHeader.vue';
 import DialogTitle from '@/components/ui/DialogTitle.vue';
 import DialogFooter from '@/components/ui/DialogFooter.vue';
 import Input from '@/components/ui/Input.vue';
+import TemplateBuilderDialog from '@/pages/web-solution-assistant/components/TemplateBuilderDialog.vue'
 import {
     deleteFileInfo, queryTemplateTitle, getFileList,
     selectWritingTemplateList,
@@ -473,6 +596,7 @@ const createTitle = ref('')
 const createNeed = ref('')
 const templateName = ref('')
 const showCreateTemplateDialog = ref(false);
+const builderVisible = ref(false)
 const usuallyTemplateData = ref([])
 const tableRef = ref(null);
 const tableKey = ref(1);
@@ -485,6 +609,8 @@ const creatingFastTemplate = ref(false) // 快速生成模板-提交中状态
 const canFastCreateSubmit = computed(() => {
   return !!createTemplateFrom.value.createTitle && !!createTemplateFrom.value.templateName && !creatingFastTemplate.value
 })
+// 生成模板所选的模型ID
+const createTemplateModelId = ref(null)
 const open = (res) => {
   const messageBox = ElMessageBox.confirm(
       '模板生成成功',
@@ -555,11 +681,21 @@ const handleCurrentChange = (val) => {
 
 onMounted(() => {
     selectTemplateList();
-    queryUsuallyTemplate()
+    loadLeftTemplates()
     // 可选：预取模型列表与默认模型
     const modelStore = useModelConfigStore();
     modelStore.fetchList();
+    // 初始化生成模板用的模型选择为当前或默认
+    if (!createTemplateModelId.value && modelStore.currentOrFirst) {
+      createTemplateModelId.value = modelStore.currentOrFirst
+    }
 });
+// 当模型列表或当前选择变化时，同步到生成模板对话框
+watch(() => useModelConfigStore().currentOrFirst, (val) => {
+  if (!createTemplateModelId.value && val) {
+    createTemplateModelId.value = val
+  }
+})
 const selectTemplateList = () => {
     const userStore = useUserStore();
     const parma ={
@@ -613,28 +749,36 @@ const queryCreateTemplate = () => {
 // 定义获取行唯一键的方法
 const getRowKey = (row) => row.template_id;
 const search = ref('')
-const usuallyTemplateData1 = computed(() =>{
-    const searchText = search.value.toLowerCase();
-    const filteredData = usuallyTemplateData.value.filter(
-        (data) => !search.value || data.template_name.toLowerCase().includes(searchText)
-    );
-    return filteredData;
-})
-const queryUsuallyTemplate = () => {
-    const selectParam = {
-        "userId": userStore.profile.mobile,
+const leftFilterType = ref('all')
+const filteredLeftList = computed(() => {
+    let data = Array.isArray(usuallyTemplateData.value) ? [...usuallyTemplateData.value] : []
+    if (leftFilterType.value !== 'all') {
+        data = data.filter(item => String(item.type || 1) === leftFilterType.value)
     }
-    usuallyTemplateQuery(selectParam).then(res => {
-        console.log("查询用户常用模板成功：",res)
-        tableKey.value +=1
-        usuallyTemplateData.value = res.data.data;
+    const q = (search.value || '').toLowerCase()
+    if (q) {
+        data = data.filter(item => (item.template_name || '').toLowerCase().includes(q))
+    }
+    return data
+})
+const loadLeftTemplates = () => {
+    const parmas = {
+        userId: userStore.profile.mobile,
+        templateTitle: ''
+    }
+    allTemplateQuery(parmas).then(res => {
+        tableKey.value += 1
+        usuallyTemplateData.value = res.data.data || []
     }).catch(error => {
-        ElMessage.error('查询用户常用模板失败:'+error);
-    }).finally(() => {
-
+        ElMessage.error('查询模板失败:'+ error);
     })
 }
 const createSolutionTemplate = () => {
+  const modelStore = useModelConfigStore();
+  if (!createTemplateModelId.value && !modelStore.currentOrFirst) {
+    ElMessage.error('请先在模型配置中添加或选择一个模型');
+    return;
+  }
   if(templateName.value ==''){
       ElMessage.error('请输入模板名称')
       return
@@ -648,7 +792,8 @@ const createSolutionTemplate = () => {
         "titleName": createTitle.value,
         "writingRequirement": createNeed.value,
         "userId": userStore.profile.mobile,
-        "templateName": templateName.value
+        "templateName": templateName.value,
+        "modelId": createTemplateModelId.value || modelStore.currentOrFirst
     }
     templateCreate(param).then(res => {
         createTitle.value = ''
@@ -755,6 +900,7 @@ const uploadFiles = () => {
   },100)
 
 };
+const openBuilder = () => { builderVisible.value = true }
 let messageShown = false;
 const selectFileList = (file_id) => {//查询文件列表
   const userStore = useUserStore();
@@ -814,6 +960,11 @@ const submit = () => {
       type: 'success',
       confirmButtonClass: 'my-confirmButtonClass-class',
     }).then(() => {
+      const modelStore = useModelConfigStore();
+      if (!createTemplateModelId.value && !modelStore.currentOrFirst) {
+        ElMessage.error('请先在模型配置中添加或选择一个模型');
+        return;
+      }
       creatingFastTemplate.value = true
       ElMessage({
         message: '模板正在生成，请稍后...',
@@ -825,7 +976,8 @@ const submit = () => {
         "titleName": createTemplateFrom.value.createTitle,
         "writingRequirement": createTemplateFrom.value.createNeed,
         "userId": userStore.profile.mobile,
-        "templateName": createTemplateFrom.value.templateName
+        "templateName": createTemplateFrom.value.templateName,
+        "modelId": createTemplateModelId.value || modelStore.currentOrFirst
       }
       templateCreate(param).then(res => {
         open(res.data.data)
@@ -920,7 +1072,9 @@ const selectOneTemplate = () => {
     titleData.value = JSON.parse(selectRowData.value.row.create_template).children
     reLoading.value = false
   }
+  // 选定后关闭模板库，同时确保其他来源的弹窗一并关闭
   showTemplateDialog.value = false
+  closeAllTransientModals()
 }
 const canclAllTemplate = () => {
   showTemplateDialog.value = false
@@ -971,13 +1125,35 @@ const selectRowData = ref('')
 const reNameVisible = ref(false)
 const newName = ref('')
 const reNameHandleClick = (row) => {
-  console.log('row',row)
   if (row.template_id >= 1 && row.template_id <= 10) {
     ElMessage.warning('禁止重命名公用模板')
     return
   }
-  selectRowData.value = row
-  reNameVisible.value = true
+  // 改为使用 Prompt，避免多层弹窗无反应
+  ElMessageBox.prompt('请输入新名称', '重命名', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputValue: row.template_name,
+  }).then(({ value }) => {
+    const newVal = (value || '').trim()
+    if (!newVal) { ElMessage.error('名称不能为空'); return }
+    if (row.type === 1 || row.type === undefined) {
+      templateReName({ id: row.template_id, template_name: newVal }).then(() => {
+        ElMessage.success('模板重命名成功')
+        queryAllTemplate(); loadLeftTemplates()
+      })
+    } else if (row.type === 2) {
+      updateFileName({ file_id: row.file_id, file_name: newVal }).then(() => {
+        ElMessage.success('文件重命名成功')
+        queryAllTemplate(); loadLeftTemplates()
+      })
+    } else if (row.type === 3) {
+      createTemplateReName({ id: row.id, template_name: newVal }).then(() => {
+        ElMessage.success('模板重命名成功')
+        queryAllTemplate(); loadLeftTemplates()
+      })
+    }
+  }).catch(() => {})
 };
 const deleteAllHandleClick = (row) => {
   console.log('row',row)
@@ -1243,6 +1419,30 @@ const handleClear = () => {
     articleRequirement.value = ''
 };
 
+// 新版对话框回填与跳转
+const handleAppliedTemplate = (tpl) => {
+  templateTitle.value = tpl.titleName || ''
+  articleRequirement.value = tpl.writingRequirement || ''
+  titleData.value = tpl.children || []
+  // 打开全屏大纲编辑弹窗，复用编辑体验
+  showOutlineFullscreen.value = true
+}
+// 统一关闭其他弹窗，避免库弹窗叠在生成弹窗之上
+const closeAllTransientModals = () => {
+  builderVisible.value = false
+  dialogTableVisible.value = false
+  showCreateTemplateDialog.value = false
+  showSaveTemplateDialog.value = false
+  reNameVisible.value = false
+  centerDialogVisible.value = false
+  createTemplateVisible.value = false
+  deleteDialogVisible.value = false
+}
+const openLibraryFromResult = () => {
+  closeAllTransientModals()
+  lookTemplateDialog()
+}
+
 // 监听 search 值的变化
 watch(search, () => {
     // 在搜索时保持当前选中行的状态
@@ -1253,30 +1453,48 @@ watch(search, () => {
     }
 });
 const selectTemplateInfo = ref('')
-const chooseTemplateFun = (row) => {//查询模板数据
-    if (!row) {
-        // selectTemplateInfo.value = null;
-        return;
-    }
+const chooseTemplateFun = (row) => { // 左侧选择模板，按 type 分流
+    if (!row) return
     titleData.value = ''
     selectTemplateInfo.value = row
     reLoading.value = true
-  const selectParam = {
-    "templateId": row.template_id
-  }
-  queryTemplateTitle(selectParam).then(res => {
-    console.log("查询模板返回结果：",res.data)
-    titleData.value = res.data
-    if (res.data.length>0 && res.data[0].children){
-      titleData.value = res.data[0].children
-        articleRequirement.value = res.data[0].writingRequirement
-      templateTitle.value = res.data[0].titleName
+    const type = row.type
+    if (type === 1 || type === undefined) {
+      const selectParam = { "templateId": row.template_id }
+      queryTemplateTitle(selectParam).then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          const first = res.data[0]
+          titleData.value = first.children || []
+          articleRequirement.value = first.writingRequirement || ''
+          templateTitle.value = first.titleName || ''
+        }
+      }).catch(error => {
+        ElMessage.error('请求失败:'+error)
+      }).finally(() => { reLoading.value = false })
+    } else if (type === 2) {
+      if (row.status_cd === '0') { ElMessage.error('该文件正在解析中，请稍后...'); reLoading.value = false; return }
+      if (row.status_cd === '2') { ElMessage.error('该文件解析失败，请重新上传解析'); reLoading.value = false; return }
+      try {
+        const parsed = JSON.parse(row.title_data)
+        const data = parsed.data || parsed
+        titleData.value = data.children || []
+        templateTitle.value = data.titleName || ''
+        articleRequirement.value = data.writingRequirement || ''
+      } catch (e) {
+        ElMessage.error('文件模板数据异常')
+      } finally { reLoading.value = false }
+    } else if (type === 3) {
+      try {
+        const data = JSON.parse(row.create_template)
+        titleData.value = data.children || []
+        templateTitle.value = data.titleName || ''
+        articleRequirement.value = data.writingRequirement || ''
+      } catch (e) {
+        ElMessage.error('AI模板数据异常')
+      } finally { reLoading.value = false }
+    } else {
+      reLoading.value = false
     }
-  }).catch(error => {
-   ElMessage.error('请求失败:'+error);
-  }).finally(() => {
-    reLoading.value = false
-  })
 };
 const transformData = (data) => {
     const result = {};
@@ -1349,14 +1567,7 @@ const uploadSolutionFile = (content) => {//上传文件
     clearInterval(intervalId.value)
     exception.value = 'exception'
     console.log('上传文件失败:' + error)
-      if (error.code === 'ERR_NETWORK') {
-          // 检查请求URL中是否包含文件上传相关路径，以及响应是否可能是413
-          if (error.config?.url?.includes('/file/upload')) {
-              ElMessage.error('文件可能超出大小限制，请检查文件大小')
-          } else {
-              ElMessage.error('网络错误，请检查网络连接')
-          }
-      } else if (error.response) {
+      if (error.response) {
           switch (error.response.status) {
               case 413:
                   ElMessage.error('文件过大，请上传小于限制的文件')
@@ -1367,6 +1578,8 @@ const uploadSolutionFile = (content) => {//上传文件
               default:
                   ElMessage.error(`上传失败: ${error.response.data?.message || '请重试'}`)
           }
+      } else if (error.code === 'ERR_NETWORK') {
+          ElMessage.error('网络异常或后端未响应，请稍后重试')
       } else {
           ElMessage.error('上传出错，请重试')
       }
@@ -1385,7 +1598,7 @@ const handleBeforeUpload = (file) => {
     return false;
 
   }
-  const maxSize = 10 * 1024 * 1024; // 10MB
+  const maxSize = 50 * 1024 * 1024; // 50MB（前端放宽，后端按字符截断）
   if (file.size > maxSize) {
     ElMessage.error(`文件太大，不能超过 ${maxSize / 1024 / 1024}MB.`);
     return false;
@@ -1395,10 +1608,10 @@ const handleBeforeUpload = (file) => {
   const fileName = file.name;
   fileShowName.value = fileName;
   const fileType = fileName.substring(fileName.lastIndexOf('.') + 1);
-  const allowedTypes = ['pdf', 'docx'];
+  const allowedTypes = ['pdf', 'docx', 'txt', 'md'];
 
   if (!allowedTypes.includes(fileType.toLowerCase())) {
-    ElMessage.error('只能上传 PDF 和 DOCX 文件!');
+    ElMessage.error('只能上传 PDF、DOCX、TXT 或 MD 文件!');
     return false;
   }
   // 如果文件类型检查通过，可以继续上传
@@ -1502,7 +1715,7 @@ const deleteTemplate = (row) => {
         }
         templateDelete(parmas).then(res => {
             ElMessage.success('删除模板成功');
-            queryUsuallyTemplate()
+            loadLeftTemplates()
         }).catch(error => {
             ElMessage.error('请求失败:'+error);
         })
@@ -1527,17 +1740,23 @@ const saveTemplateDialog=()=>{
         return
     }
 
-    // if(usuallyTemplateData.value.find(item => item.template_id === selectRowData.value.row.template_id).value.row.user_id !== '0'){
-    //   showSaveTemplate.value = true
-    // }
-    console.log("saveTemplateDialog",selectRowData.value.row)
-    isAdd.value = ''
-    templateName.value = templateTitle.value + "（自定义）"
+    // 根据当前选中的模板类型决定交互
+    const row = selectTemplateInfo.value
+    const canOverride = row && (row.type === 1 || row.type === undefined) && row.user_id !== '0'
+    showSaveTemplate.value = !!canOverride
+    if (canOverride) {
+      isAdd.value = '1001'
+      templateName.value = row.template_name || templateTitle.value
+    } else {
+      isAdd.value = '1000'
+      templateName.value = templateTitle.value + '（自定义）'
+    }
     showSaveTemplateDialog.value = true
 }
 const showTemplateDialog = ref(false);
 const selectRadio = ref('');
 const lookTemplateDialog=()=>{
+  closeAllTransientModals()
   queryAllTemplate()
   showTemplateDialog.value = true
 }
@@ -1572,19 +1791,10 @@ const cancelSave = () => {
     isAdd.value =''
 }
 const saveTemplate=()=>{
-    for(let i = 0; i < usuallyTemplateData.value.length; i++){
-        if(usuallyTemplateData.value[i].template_name === templateName.value){
-            ElMessage.error('该模板名称已存在，请重新输入');
-            return
-        }
-        // if(selectTemplateInfo.value !== ''){
-        //     if (selectTemplateInfo.value.user_id !== '0'){
-        //         if(isAdd.value === ''){
-        //             ElMessage.error('请先选择保存为新自定义模板或覆盖原有自定义模板');
-        //             return
-        //         }
-        //     }
-        // }
+    // 仅校验写作模板（type=1）的重名，避免与文件/AI模板混淆
+    if ((usuallyTemplateData.value || []).some(it => (it.type === 1 || it.type === undefined) && it.template_name === templateName.value)) {
+        ElMessage.error('该模板名称已存在，请重新输入');
+        return
     }
     showSaveTemplateDialog.value = false
     if(isAdd.value === '1000'){
@@ -1602,7 +1812,7 @@ const saveTemplate=()=>{
 
         templateSave(saveTemplateParam).then(res => {
             ElMessage.success('模板保存成功');
-            queryUsuallyTemplate()
+            loadLeftTemplates()
         })
     }else if(isAdd.value === '1001'){
         const parameter = {
@@ -1621,7 +1831,7 @@ const saveTemplate=()=>{
         templateUpdate(saveTemplateParam).then(res => {
             ElMessage.success('模板修改成功');
             showSaveTemplateDialog.value = false
-            queryUsuallyTemplate()
+            loadLeftTemplates()
         })
     }else {
         const parameter = {
@@ -1638,7 +1848,7 @@ const saveTemplate=()=>{
         console.log("saveTemplateParam",saveTemplateParam)
         templateSave(saveTemplateParam).then(res => {
             ElMessage.success('模板保存成功');
-            queryUsuallyTemplate()
+            loadLeftTemplates()
         })
     }
 
@@ -1653,6 +1863,49 @@ onBeforeUnmount(() => {
         richTextEditorRefs.value.isPause = true
     }
 });
+
+// 全屏大纲编辑弹窗状态与确认
+const showOutlineFullscreen = ref(false)
+const confirmOutlineFromFullscreen = () => {
+  // 直接复用同一个响应式对象，已与左侧表单联动
+  showOutlineFullscreen.value = false
+  ElMessage.success('已应用全屏编辑的大纲')
+}
+
+// 目录树与搜索
+const outlineSearch = ref('')
+const outlineToTree = (data) => {
+  return (data || []).map((n1, i1) => ({
+    id: n1.titleId ?? i1,
+    name: n1.titleName,
+    children: (n1.children || []).map((n2, i2) => ({
+      id: n2.titleId ?? `${i1}-${i2}`,
+      name: n2.titleName,
+      children: (n2.children || []).map((n3, i3) => ({
+        id: n3.titleId ?? `${i1}-${i2}-${i3}`,
+        name: n3.titleName,
+      })),
+    })),
+  }))
+}
+const filteredOutline = computed(() => {
+  const q = outlineSearch.value?.trim().toLowerCase()
+  const tree = outlineToTree(titleData.value)
+  if (!q) return tree
+  const match = (node) => (node.name || '').toLowerCase().includes(q)
+  const dfs = (nodes) => nodes
+    .map(n => {
+      const kids = n.children ? dfs(n.children) : []
+      if (match(n) || kids.length) return { ...n, children: kids }
+      return null
+    })
+    .filter(Boolean)
+  return dfs(tree)
+})
+const scrollToId = (id) => {
+  const el = document.getElementById(id)
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 </script>
 
 <style scoped>
@@ -1798,5 +2051,26 @@ onBeforeUnmount(() => {
 /* 增加文章标题输入框的上间距 */
 :deep(textarea#template-title) {
   padding-top: 2rem !important;
+}
+
+/* 修复“全部模板”弹窗在选择后出现的边界溢出与位移问题 */
+:deep(.template-dialog .el-dialog) {
+  /* 去除全局为 .el-dialog 设置的额外内边距，避免宽度计算溢出 */
+  padding: 0 !important;
+  width: 80vw !important;
+  max-width: 1100px;
+  max-height: 80vh;
+  overflow: hidden; /* 禁止外层产生水平/垂直溢出 */
+}
+:deep(.template-dialog .el-dialog__body) {
+  /* 让内容区可滚动，避免撑破弹窗 */
+  max-height: calc(80vh - 120px);
+  overflow: auto;
+  box-sizing: border-box;
+}
+:deep(.template-dialog .el-dialog__footer) {
+  /* 保证底部操作区始终在可视范围内且不挤出边界 */
+  padding: 12px 16px 16px 16px !important;
+  background: var(--background, #fff);
 }
 </style>

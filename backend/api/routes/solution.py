@@ -23,7 +23,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import get_async_db
 from api.routes.file import select_file_by_title
-from api.routes.templates import title_query_by_templateName
+# 注：此前从 templates 路由导入的函数 `title_query_by_templateName` 并不存在且未使用，
+# 会导致应用在启动阶段 ImportError，从而阻断所有接口，包括生成报告接口。
+# 因此移除该无效导入以恢复服务启动。
 router = APIRouter()
 Base = declarative_base()
 # 用于存储序列号的字典，键为日期，值为序列号

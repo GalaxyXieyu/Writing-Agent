@@ -105,14 +105,13 @@ export const queryTemplateTitle = (data) => {
  * @description: 文件上传
  * @return {promise}
  */
-export const uploadBusiFile = (params) => {
+export const uploadBusiFile = (params, config = {}) => {
+    // 让 axios 自动设置 multipart/form-data 的 boundary，支持 onUploadProgress 显示真实上传进度
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/file/upload`,
         data: params,
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
+        onUploadProgress: config.onUploadProgress,
     });
 };
 /**
