@@ -1,0 +1,25 @@
+# 根目录 .dockerignore（减少构建上下文与敏感文件）
+.git
+.gitignore
+.DS_Store
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.cache
+
+# 后端本地环境/日志
+backend/.env
+backend/.venv
+backend/logs
+backend/uploads
+
+# 前端本地环境
+frontend/.env.*

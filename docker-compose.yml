@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: writingagent-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "tianshu"
+      MYSQL_USER: "gmccai"
+      MYSQL_PASSWORD: "123456"
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "30306:3306"  # 主机 30306 → 容器 3306（与原项目端口保持一致）
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p123456"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: writingagent-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "30637:6379"  # 主机 30637 → 容器 6379（与原项目端口保持一致）
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: writingagent-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 数据库配置（覆盖 config.json 默认）
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: "gmccai"
+      DB_PASSWORD: "123456"
+      DB_NAME: "tianshu"
+      # Redis 配置
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      # 如需密码可增加 REDIS_PASSWORD
+    volumes:
+      - ./backend:/app
+      - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
+    ports:
+      - "29847:29847"
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "29847"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:29847/api/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: writingagent-web
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    # 如需自定义环境变量参与前端构建，可在此传入 ARG/ENV 并在 Dockerfile 中处理
+
+volumes:
+  mysql_data:
+  redis_data:
+  backend_logs:
+  backend_uploads:

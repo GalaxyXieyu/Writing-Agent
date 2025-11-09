@@ -21,6 +21,12 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 
+@app.get("/api/health")
+async def health_check():
+    """健康检查端点，用于容器探针与状态检测"""
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 async def on_startup():
     # 启动时初始化数据库表（幂等）

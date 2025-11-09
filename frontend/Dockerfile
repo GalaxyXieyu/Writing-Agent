@@ -14,8 +14,8 @@ RUN npm config set registry https://registry.npmmirror.com \
 # 复制所有源代码
 COPY . .
 
-# 构建静态文件（H5）
-RUN npm run build:h5
+# 构建静态文件（Vite 生产构建）
+RUN npm run build
 
 # 第二阶段：Nginx 服务阶段
 FROM docker.m.daocloud.io/library/nginx:alpine
@@ -24,7 +24,7 @@ FROM docker.m.daocloud.io/library/nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 从构建阶段复制构建产物到 nginx 静态资源目录
-COPY --from=builder /build/dist/build/h5 /usr/share/nginx/html
+COPY --from=builder /build/dist /usr/share/nginx/html
 
 # 暴露 80 端口
 EXPOSE 80
