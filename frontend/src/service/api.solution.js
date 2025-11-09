@@ -1,8 +1,11 @@
 import { http } from './request';
 import axios from 'axios';
 // 优先使用环境变量中的后端主机地址，默认回落到本地开发端口
+// 修正：生产环境下 .env.production 配置了 VITE_BASE_API_HOST=/api，
+// 之前再拼接 '/api' 会变成 '/api/api/...'
 const VITE_SOLUTION_API_BASE_PREFIX = import.meta.env.VITE_BASE_API_HOST || 'http://localhost:29847';
-const VITE_SOLUTION_API_PROXY_PREFIX = '/api';
+// 当 BASE 以 /api 结尾时，不再追加代理前缀，避免出现 /api/api 重复
+const VITE_SOLUTION_API_PROXY_PREFIX = VITE_SOLUTION_API_BASE_PREFIX.endsWith('/api') ? '' : '/api';
 
 /**
  * @description: 登录验证

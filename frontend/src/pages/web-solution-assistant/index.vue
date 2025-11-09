@@ -1330,8 +1330,11 @@ const pauseCreate = () => {
         type: 'warning',
       confirmButtonClass: 'my-confirmButtonClass-class',
     }).then(() => {
-      richTextEditorRefs.value.isCreate = false
-      richTextEditorRefs.value.isPause = true
+      // 子组件通过 defineExpose 暴露了 isCreate/isPause（ref），此处需访问其 .value
+      if (richTextEditorRefs.value) {
+        if (richTextEditorRefs.value.isCreate) richTextEditorRefs.value.isCreate.value = false
+        if (richTextEditorRefs.value.isPause) richTextEditorRefs.value.isPause.value = true
+      }
         isCreate.value=!isCreate.value
     }).catch(() => {
         ElMessage({
@@ -1388,9 +1391,14 @@ const createArticle = () => {  //调用生成文章接口
             "children": titleData.value
 
         }
+        // 兼容不同来源的模板：
+        // - 自定义/内置模板: template_id
+        // - AI 生成模板: id
+        // - 文件模板: 无模板 id，仅传 null
+        const rawTplId = selectTemplateInfo.value?.template_id ?? selectTemplateInfo.value?.id ?? null
         const templateTitleParam1 = {
             "outline": parameter,
-            "templateId": selectTemplateInfo.value ? selectTemplateInfo.value.template_id.toString() : null,
+            "templateId": rawTplId != null ? String(rawTplId) : null,
             "userId": userStore.profile.mobile
         }
         // generateArticlesRef.value.createArticle(templateTitleParam1)
