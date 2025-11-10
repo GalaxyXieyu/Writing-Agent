@@ -4,8 +4,10 @@ from utils.template_load import markdown_to_json, json_to_markdown
 from ai.agents import template_generator, template_refresher
 from utils.logger import mylog
 from langchain_core.runnables import RunnablePassthrough
-from templates.ai_templates.template_generate import template_generate_prompt
+from templates.ai_templates.template_generate import get_template_generate_prompt
 from utils.tools import extract_template_generate
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 class TemplateService:
     def __init__(self):
@@ -27,13 +29,17 @@ class TemplateService:
                 raise ValueError("AI模型API认证失败，请检查API密钥配置")
             raise
 
-    async def create_template_entryTable(self, createNeed, llm) -> TemplateContentResponse:
+    async def create_template_entryTable(self, createNeed, llm, db: Optional[AsyncSession] = None) -> TemplateContentResponse:
         try:
             mylog.info("创建模板请求: %s", createNeed)
+            # 从数据库获取提示词模板，支持示例输出
+            example_output = getattr(createNeed, 'exampleOutput', None)
+            prompt_template = await get_template_generate_prompt(db=db, example_output=example_output)
+            
             # === 使用传入的 llm 动态创建 template_generator ===
             dynamic_template_generator = (
                 {"titleName": RunnablePassthrough(), "writingRequirement": RunnablePassthrough()} 
-                | template_generate_prompt 
+                | prompt_template 
                 | llm 
                 | extract_template_generate
             )

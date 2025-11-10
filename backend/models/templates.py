@@ -41,6 +41,7 @@ class AICreateTemplate(Base):
     user_id = Column(String(255), nullable=False, comment='用户id')
     template_name = Column(String(255), comment='模板名称')
     create_template = Column(Text, comment='所生成模板')
+    example_output = Column(Text, nullable=True, comment='示例输出内容')
     create_time = Column(Date, nullable=False, comment='生成时间')
     update_time = Column(Date, comment='更新时间')
     update_id = Column(String(255), comment='更新人')
@@ -142,6 +143,7 @@ class TemplateCreate(BaseModel):
     userId: str
     templateName: str
     modelId: Optional[int] = None
+    exampleOutput: Optional[str] = None
 
 
 class reTemplatename(BaseModel):

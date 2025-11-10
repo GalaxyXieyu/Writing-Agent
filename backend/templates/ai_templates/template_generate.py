@@ -1,6 +1,10 @@
 from langchain_core.prompts import PromptTemplate
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from services.prompt_config import get_prompt_by_type
 
-template_generate_template = """
+# 默认提示词模板（作为回退）
+template_generate_template_default = """
 **背景 B (Background):**
 - 我将提供一个文章主题和文章要求，你需要通过这段文本生成相应的文章总标题、一级标题、二级标题等信息。
 
@@ -62,6 +66,49 @@ template_generate_template = """
 
 ## 文章标题：{titleName}
 ## 文章要求：{writingRequirement}
-"""
+{exampleOutput}"""
 
-template_generate_prompt = PromptTemplate.from_template(template_generate_template)
+
+async def get_template_generate_prompt(db: Optional[AsyncSession] = None, example_output: Optional[str] = None) -> PromptTemplate:
+    """
+    从数据库获取模板生成提示词，如果数据库中没有则使用默认提示词。
+    
+    Args:
+        db: 数据库会话
+        example_output: 可选的示例输出内容
+    
+    Returns:
+        PromptTemplate: LangChain 提示词模板
+    """
+    prompt_content = template_generate_template_default
+    
+    # 尝试从数据库读取
+    if db:
+        try:
+            prompt_config = await get_prompt_by_type(db, "template_generate")
+            if prompt_config:
+                prompt_content = prompt_config.prompt_content
+        except Exception:
+            # 如果读取失败，使用默认提示词
+            pass
+    
+    # 处理示例输出
+    if example_output and example_output.strip():
+        example_section = f"\n## 示例输出：\n{example_output.strip()}\n"
+        # 如果提示词中没有 {exampleOutput} 占位符，则在末尾添加示例部分
+        if "{exampleOutput}" not in prompt_content:
+            prompt_content = prompt_content.replace(
+                "## 文章要求：{writingRequirement}",
+                f"## 文章要求：{{writingRequirement}}{example_section}"
+            )
+        else:
+            prompt_content = prompt_content.replace("{exampleOutput}", example_section)
+    else:
+        # 如果没有示例输出，移除占位符
+        prompt_content = prompt_content.replace("{exampleOutput}", "")
+    
+    return PromptTemplate.from_template(prompt_content)
+
+
+# 保持向后兼容：直接使用默认模板创建 PromptTemplate
+template_generate_prompt = PromptTemplate.from_template(template_generate_template_default)

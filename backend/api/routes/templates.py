@@ -355,7 +355,7 @@ async def create_template_entry_table(request_data: TemplateCreate, db: AsyncSes
                 raise HTTPException(status_code=404, detail="未找到可用的模型配置，请先配置模型")
         
         # === 调用模板服务生成模板 ===
-        data = await template_service.create_template_entryTable(request_data, llm)
+        data = await template_service.create_template_entryTable(request_data, llm, db=db)
         
         # === 保存模板到数据库 ===
         create_template_json = json.dumps(data, ensure_ascii=False)
@@ -363,6 +363,7 @@ async def create_template_entry_table(request_data: TemplateCreate, db: AsyncSes
             'user_id': request_data.userId,
             'template_name': request_data.templateName,
             'create_template': create_template_json,
+            'example_output': getattr(request_data, 'exampleOutput', None),
             'create_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'show_cd': 'Y'
         }

@@ -38,13 +38,13 @@
 						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<SidebarMenuButton
-								:isActive="activeSidebarMenu === 'history'"
-								@click="handleSidebarSelect('history')"
+								:isActive="activeSidebarMenu === 'prompt-config'"
+								@click="handleSidebarSelect('prompt-config')"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 								</svg>
-								<span>历史记录</span>
+								<span>提示词配置</span>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 						<SidebarMenuItem>
@@ -57,6 +57,17 @@
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 								</svg>
 								<span>模型配置</span>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								:isActive="activeSidebarMenu === 'history'"
+								@click="handleSidebarSelect('history')"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span>历史记录</span>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					</SidebarMenu>
@@ -94,6 +105,7 @@ const activeSidebarMenu = computed(() => {
 		'/web-solution-assistant': 'generate',
 		'/history': 'history',
 		'/model-config': 'model-config',
+		'/prompt-config': 'prompt-config',
 	};
 	return routeMap[route.path] || 'generate';
 });
@@ -103,6 +115,7 @@ const handleSidebarSelect = (key) => {
 		generate: '/web-solution-assistant',
 		history: '/history',
 		'model-config': '/model-config',
+		'prompt-config': '/prompt-config',
 	};
 	const targetRoute = routeMap[key];
 	if (targetRoute) {

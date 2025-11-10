@@ -1,110 +1,8 @@
-"""
-初始化脚本（仅保留新方式）：
-- init_database：启动时自动创建缺失的数据表（包含 ai_model_config、ai_prompt_config 等 Base 关联表）
-- 自动初始化默认提示词配置数据
-"""
+-- 初始化默认提示词数据
+-- 从现有硬编码提示词迁移到数据库
 
-from models.database import Base
-from config import get_db_engine
-from sqlalchemy import text
-from utils.logger import mylog
-
-
-async def init_database():
-    """创建缺失的数据表（包含 ai_model_config、ai_prompt_config 等）。
-    依赖 SQLAlchemy Base 元数据，幂等执行。
-    同时初始化默认提示词配置数据。
-    自动执行数据库迁移（添加缺失的列）。
-    """
-    # 确保模型已注册到 Base.metadata
-    # 仅需导入一次以触发表注册
-    from models import model_config  # noqa: F401
-    from models import prompt_config  # noqa: F401
-    
-    engine = get_db_engine()
-    async with engine.begin() as conn:
-        # 使用同步 API 在异步连接中执行 metadata.create_all
-        await conn.run_sync(Base.metadata.create_all)
-        mylog.info("数据库表结构创建完成")
-    
-    # 执行数据库迁移（添加缺失的列）
-    await migrate_database(engine)
-    
-    # 初始化默认提示词数据
-    await init_default_prompts(engine)
-    
-    # 无异常则表示完成
-
-
-async def migrate_database(engine):
-    """执行数据库迁移，添加缺失的列（幂等执行）"""
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-    
-    AsyncSessionLocal = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-    
-    async with AsyncSessionLocal() as session:
-        try:
-            # 检查并添加 ai_create_template.example_output 列
-            result = await session.execute(
-                text("""
-                    SELECT COUNT(*) 
-                    FROM information_schema.COLUMNS 
-                    WHERE TABLE_SCHEMA = DATABASE() 
-                    AND TABLE_NAME = 'ai_create_template' 
-                    AND COLUMN_NAME = 'example_output'
-                """)
-            )
-            column_exists = result.scalar() > 0
-            
-            if not column_exists:
-                mylog.info("添加 ai_create_template.example_output 列...")
-                await session.execute(
-                    text("""
-                        ALTER TABLE ai_create_template 
-                        ADD COLUMN example_output TEXT NULL COMMENT '示例输出内容'
-                    """)
-                )
-                await session.commit()
-                mylog.info("ai_create_template.example_output 列添加完成")
-            else:
-                mylog.info("ai_create_template.example_output 列已存在，跳过迁移")
-                
-        except Exception as e:
-            mylog.error(f"数据库迁移失败: {str(e)}")
-            # 不抛出异常，避免影响应用启动
-            await session.rollback()
-
-
-async def init_default_prompts(engine):
-    """初始化默认提示词配置数据（幂等执行）"""
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-    
-    AsyncSessionLocal = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-    
-    async with AsyncSessionLocal() as session:
-        try:
-            # 检查是否已有提示词配置
-            result = await session.execute(
-                text("SELECT COUNT(*) FROM ai_prompt_config WHERE prompt_type IN ('template_generate', 'paragraph_generate', 'template_refresh')")
-            )
-            count = result.scalar()
-            
-            if count == 0:
-                mylog.info("开始初始化默认提示词配置...")
-                
-                # 默认提示词内容
-                default_prompts = [
-                    {
-                        'prompt_type': 'template_generate',
-                        'prompt_content': '''**背景 B (Background):**
+INSERT INTO ai_prompt_config (prompt_type, prompt_content, status_cd) VALUES
+('template_generate', '**背景 B (Background):**
 - 我将提供一个文章主题和文章要求，你需要通过这段文本生成相应的文章总标题、一级标题、二级标题等信息。
 
 **角色 R (Role):**
@@ -165,12 +63,9 @@ async def init_default_prompts(engine):
 
 ## 文章标题：{titleName}
 ## 文章要求：{writingRequirement}
-{exampleOutput}''',
-                        'status_cd': 'Y'
-                    },
-                    {
-                        'prompt_type': 'paragraph_generate',
-                        'prompt_content': '''## 角色：你是一个专业的文章创作智能体。根据【整体文章标题】，理解【本章要求】，编写该章节内容，确保自然融合且无冲突。
+{exampleOutput}', 'Y'),
+
+('paragraph_generate', '## 角色：你是一个专业的文章创作智能体。根据【整体文章标题】，理解【本章要求】，编写该章节内容，确保自然融合且无冲突。
 ## 规则：
 1- 严格按照【整体文章标题】和【本章要求】生成内容，字数丰富，内容有深度，引用数据和案例。
 2- 分析文章类别，调用专业数据，确保内容专业。
@@ -192,12 +87,9 @@ async def init_default_prompts(engine):
 ##【整体文章标题】={complete_title}
 ##【上一章节内容】={last_para_content}
 ##【本章标题】={titleNames}
-##【本章要求】={requirements}''',
-                        'status_cd': 'Y'
-                    },
-                    {
-                        'prompt_type': 'template_refresh',
-                        'prompt_content': '''**背景 B (Background):**
+##【本章要求】={requirements}', 'Y'),
+
+('template_refresh', '**背景 B (Background):**
 - 用户提供了一个现有的大纲，请你从自身的解决方案客户经理的角度出发，针对目前的大纲进行调整，生成一个新的符合要求的结构化大纲。输入和输出格式均为JSON，且必须严格遵守格式规范。
 
 **角色 R (Role):**
@@ -275,27 +167,6 @@ async def init_default_prompts(engine):
 
 ## 文章标题：{titleName}
 ## 文章要求：{writingRequirement}
-## 原有大纲：{original_template}''',
-                        'status_cd': 'Y'
-                    }
-                ]
-                
-                # 批量插入
-                for prompt_data in default_prompts:
-                    await session.execute(
-                        text("""
-                            INSERT INTO ai_prompt_config (prompt_type, prompt_content, status_cd, created_at, updated_at)
-                            VALUES (:prompt_type, :prompt_content, :status_cd, NOW(), NOW())
-                        """),
-                        prompt_data
-                    )
-                
-                await session.commit()
-                mylog.info("默认提示词配置初始化完成")
-            else:
-                mylog.info("提示词配置已存在，跳过初始化")
-                
-        except Exception as e:
-            mylog.error(f"初始化提示词配置失败: {str(e)}")
-            # 不抛出异常，避免影响应用启动
-            await session.rollback()
+## 原有大纲：{original_template}', 'Y')
+ON DUPLICATE KEY UPDATE prompt_content = VALUES(prompt_content), updated_at = CURRENT_TIMESTAMP;
+

@@ -51,7 +51,7 @@ def generate_writing_requirements(chapter: OutlineItem) -> str:
 
 
 # 完整章节生成
-async def generate_article(state: ChapterGenerationState, llm) -> AsyncGenerator[str, None]:
+async def generate_article(state: ChapterGenerationState, llm, db=None) -> AsyncGenerator[str, None]:
     complete_content = ""  # 用于存储完整的返回内容
     # 提取最高级别的标题
     highest_level_title = state.outline.titleName
@@ -79,13 +79,13 @@ async def generate_article(state: ChapterGenerationState, llm) -> AsyncGenerator
         yield "# "+chapter.titleName+"\n"
         # 处理每个二级章节
         if not chapter.children:
-            async for token in generate_chapter(chapter, last_para_content, highest_level_title, llm):
+            async for token in generate_chapter(chapter, last_para_content, highest_level_title, llm, db=db):
                 complete_content += token  # 累加到完整内容中
                 yield token
         else:
             for subchapter in chapter.children:
                 subchapter_content = ""
-                async for token in generate_chapter(subchapter, last_para_content, highest_level_title, llm):
+                async for token in generate_chapter(subchapter, last_para_content, highest_level_title, llm, db=db):
                     subchapter_content += token
                     complete_content += token  # 累加到完整内容中
                     yield token
@@ -103,7 +103,7 @@ async def generate_article(state: ChapterGenerationState, llm) -> AsyncGenerator
 
 
 # 单个章节生成
-async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest_level_title: str, llm) -> AsyncGenerator[str, None]:
+async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest_level_title: str, llm, db=None) -> AsyncGenerator[str, None]:
     writing_requirements = generate_writing_requirements(chapter)
     structure = f"Writing Requirement: {writing_requirements}"
     complete_template = f"{structure}"
@@ -115,7 +115,9 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
         mylog.debug(f"入参 - 本章内容: {chapter.titleName}")
         mylog.debug(f"入参 - 本章的要求: {writing_requirements}")
         
-        chain = build_paragraph_chain(llm)
+        # 使用异步函数构建 chain，支持从数据库读取提示词
+        from ai.agents.paragraph_writer import build_paragraph_chain_async
+        chain = await build_paragraph_chain_async(llm, db=db)
         async for token in chain.astream({
             "complete_title": highest_level_title,
             "last_para_content": last_para_content,

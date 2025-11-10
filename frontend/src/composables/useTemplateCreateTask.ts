@@ -21,6 +21,10 @@ export function useTemplateCreateTask() {
         templateName: params.templateName || params.titleName || 'AI生成模板',
         modelId: params.modelId,
       }
+      // 如果提供了示例输出，添加到 payload
+      if (params.exampleOutput) {
+        (payload as any).exampleOutput = params.exampleOutput
+      }
       const res = await templateCreate(payload)
       // 后端统一返回 TemplateContentResponse，主体在 data 字段
       data.value = (res as any)?.data?.data

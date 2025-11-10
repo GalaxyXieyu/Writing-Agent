@@ -43,6 +43,14 @@ const routes = [
 					title: '模型配置管理',
 				},
 			},
+			{
+				path: '/prompt-config',
+				name: 'prompt-config',
+				component: () => import('@/pages/prompt-config/index.vue'),
+				meta: {
+					title: '提示词配置',
+				},
+			},
 		],
 	},
 ];

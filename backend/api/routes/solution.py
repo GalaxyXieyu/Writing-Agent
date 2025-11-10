@@ -73,7 +73,7 @@ async def generate_chapter_api(request: ChapterGenerationRequest, req: Request, 
 
     async def generate():
         # try:
-            async for content in generate_chapter(request.chapter, request.last_para_content, highest_level_title="", llm=llm):
+            async for content in generate_chapter(request.chapter, request.last_para_content, highest_level_title="", llm=llm, db=db):
                 yield format_sse(content)
                 await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
             yield format_sse("", is_end=True)
@@ -166,7 +166,7 @@ async def generate_article_api(request: ArticleGenerationRequest,db: AsyncSessio
     async def generate():
         # try:
             state = ChapterGenerationState(request.outline)
-            async for content in generate_article(state, llm):
+            async for content in generate_article(state, llm, db=db):
                 yield format_sse(content)
                 await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
             yield format_sse("", is_end=True)

@@ -25,6 +25,10 @@
           <Label class="text-sm">模板要求</Label>
           <Textarea v-model="fast.need" placeholder="请输入模板要求" class="mt-1" />
         </div>
+        <div>
+          <Label class="text-sm">示例输出（可选）</Label>
+          <Textarea v-model="fast.exampleOutput" placeholder="请输入示例输出，用于指导AI生成类似格式的内容" class="mt-1" :rows="4" />
+        </div>
         <div v-if="isRunning" class="rounded-md border p-3 text-sm text-muted-foreground">
           正在生成模板，请稍候...
         </div>
@@ -97,11 +101,11 @@ const modelIdRef = ref<any>(props.modelId)
 watch(() => props.modelId, (v)=>{ if(v) modelIdRef.value = v })
 
 // 快速生成
-const fast = ref({ title: '', need: '', name: '' })
+const fast = ref({ title: '', need: '', name: '', exampleOutput: '' })
 const createTask = useTemplateCreateTask()
 const userStore = useUserStore()
 const canSubmitFast = computed(() => !!fast.value.title && !!modelIdRef.value)
-// 只有用户点击“开始生成”后才显示生成中提示
+// 只有用户点击"开始生成"后才显示生成中提示
 const started = ref(false)
 const isRunning = computed(() => started.value && createTask.running.value)
 
@@ -112,8 +116,12 @@ async function submitFast() {
     userId: userStore.profile.mobile,
     modelId: modelIdRef.value
   }
-  // 若后端要求 createTemplateEntryTable 需要模板名，这里使用“标题”或默认名兜底
+  // 若后端要求 createTemplateEntryTable 需要模板名，这里使用"标题"或默认名兜底
   ;(params as any).templateName = fast.value.name || fast.value.title || 'AI生成模板'
+  // 添加示例输出（如果填写了）
+  if (fast.value.exampleOutput && fast.value.exampleOutput.trim()) {
+    ;(params as any).exampleOutput = fast.value.exampleOutput.trim()
+  }
   started.value = true
   const data = await createTask.start(params)
   if (data) {
@@ -178,10 +186,10 @@ async function copyOutline() {
 
 function close() { innerVisible.value = false }
 
-// 弹窗打开时重置所有本地状态，避免显示历史的“正在生成中”提示
+// 弹窗打开时重置所有本地状态，避免显示历史的"正在生成中"提示
 function resetState() {
   tab.value = 'fast'
-  fast.value = { title: '', need: '' }
+  fast.value = { title: '', need: '', name: '', exampleOutput: '' }
   result.value = null
   uploading.value = false
   uploadPercent.value = 0
