@@ -22,6 +22,20 @@ export const solutionLogin = (data) => {
 };
 
 /**
+ * @description: 用户注册
+ * @param {object} data 用户信息
+ * @return {promise}
+ */
+export const solutionRegister = (data) => {
+    return http({
+        method: 'POST',
+        // 后端 auth 路由无前缀，挂在 /api 下
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/register`,
+        data,
+    });
+};
+
+/**
  * @description: 验证token是否过期
  * @param {string} token
  * @return {promise}

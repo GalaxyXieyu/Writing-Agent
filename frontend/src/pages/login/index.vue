@@ -22,20 +22,25 @@
 		<div class="flex-1 flex items-center justify-center p-6 lg:p-12">
 			<div class="w-full max-w-md">
 				<div class="flex items-center justify-end mb-6">
-					<router-link to="/login" class="text-sm text-muted-foreground hover:text-foreground">
-						还没有账号？注册
-					</router-link>
+					<button 
+						@click="toggleMode" 
+						class="text-sm text-muted-foreground hover:text-foreground"
+					>
+						{{ isRegisterMode ? '已有账号？登录' : '还没有账号？注册' }}
+					</button>
 				</div>
 
 				<Card>
 					<CardHeader>
-						<CardTitle class="text-2xl text-center">登录账户</CardTitle>
+						<CardTitle class="text-2xl text-center">
+							{{ isRegisterMode ? '注册账户' : '登录账户' }}
+						</CardTitle>
 						<CardDescription class="text-center">
-							在下方输入您的账号和密码以登录账户
+							{{ isRegisterMode ? '在下方输入账号和密码以注册新账户' : '在下方输入您的账号和密码以登录账户' }}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form @submit.prevent="handleLogin" class="space-y-4">
+						<form @submit.prevent="isRegisterMode ? handleRegister() : handleLogin()" class="space-y-4">
 							<div class="space-y-2">
 								<label for="username" class="text-sm font-medium leading-none">账号</label>
 								<Input
@@ -54,7 +59,7 @@
 									type="password"
 									placeholder="请输入密码"
 									required
-									@keyup.enter="handleLogin"
+									@keyup.enter="isRegisterMode ? handleRegister() : handleLogin()"
 								/>
 							</div>
 							<Button
@@ -62,7 +67,7 @@
 								class="w-full"
 								:disabled="loading"
 							>
-								{{ loading ? '登录中...' : '登录' }}
+								{{ loading ? (isRegisterMode ? '注册中...' : '登录中...') : (isRegisterMode ? '注册' : '登录') }}
 							</Button>
 							<div class="relative">
 								<div class="absolute inset-0 flex items-center">
@@ -101,7 +106,7 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store';
 import { ElMessage } from 'element-plus';
-import { solutionLogin } from '@/service/api.solution';
+import { solutionLogin, solutionRegister } from '@/service/api.solution';
 import Card from '@/components/ui/Card.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
@@ -114,11 +119,19 @@ import Separator from '@/components/ui/Separator.vue';
 const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
+const isRegisterMode = ref(false);
 
 const loginForm = reactive({
 	username: '',
 	password: '',
 });
+
+const toggleMode = () => {
+	isRegisterMode.value = !isRegisterMode.value;
+	// 切换模式时清空表单
+	loginForm.username = '';
+	loginForm.password = '';
+};
 
 const handleLogin = async () => {
 	const username = loginForm.username?.trim();
@@ -151,6 +164,42 @@ const handleLogin = async () => {
 		}
 	} catch (error) {
 		ElMessage.error(error.message || '登录失败');
+	} finally {
+		loading.value = false;
+	}
+};
+
+const handleRegister = async () => {
+	const username = loginForm.username?.trim();
+	const password = loginForm.password?.trim();
+	
+	if (!username || !password) {
+		ElMessage.warning('请输入账号和密码');
+		return;
+	}
+	
+	loading.value = true;
+	try {
+		const res = await solutionRegister({
+			username,
+			password,
+		});
+		
+		if (res.code === 200 && res.data) {
+			userStore.setToken(res.data.token);
+			userStore.setProfile({
+				name: res.data.name || res.data.username || '用户',
+				user_id: res.data.user_id,
+				username: res.data.username,
+			});
+			
+			ElMessage.success(res.message || '注册成功');
+			router.push('/web-solution-assistant');
+		} else {
+			ElMessage.error(res.message || '注册失败');
+		}
+	} catch (error) {
+		ElMessage.error(error.message || '注册失败');
 	} finally {
 		loading.value = false;
 	}

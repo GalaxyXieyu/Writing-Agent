@@ -1,6 +1,16 @@
 name: Writing-Agent
 
 services:
+  mysql-init:
+    image: alpine:latest
+    container_name: mysql-init
+    volumes:
+      - ./mysql_init:/source:ro
+      - mysql_init_volume:/target
+    command: sh -c "cp -r /source/* /target/ 2>/dev/null || true"
+    profiles:
+      - init
+
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -15,11 +25,16 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ./mysql_data:/var/lib/mysql
-      - ./mysql_init:/docker-entrypoint-initdb.d
+      - mysql_init_volume:/docker-entrypoint-initdb.d
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     networks:
       - writingagent-network
 
@@ -41,6 +56,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+        PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
     container_name: api
     restart: always
     command: uvicorn main:app --host 0.0.0.0 --port 29847
@@ -56,8 +72,10 @@ services:
       - REDIS_PORT=6379
       - REDIS_DB=0
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "29847:29847"
     networks:
@@ -83,6 +101,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+        PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
     container_name: worker
     restart: always
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=4 -E
@@ -98,8 +117,10 @@ services:
       - REDIS_PORT=6379
       - REDIS_DB=0
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - writingagent-network
 
@@ -109,6 +130,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: docker.m.daocloud.io/library/python:3.10-slim-bookworm
+        PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
     container_name: flower
     restart: always
     command: celery -A tasks.celery_app flower --port=5555
@@ -128,6 +150,7 @@ services:
 
 volumes:
   redis_data:
+  mysql_init_volume:
 
 networks:
   writingagent-network:
