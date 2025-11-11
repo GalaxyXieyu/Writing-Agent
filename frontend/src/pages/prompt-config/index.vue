@@ -12,7 +12,8 @@
           <div class="text-muted-foreground">加载中...</div>
         </div>
 
-        <Table v-else>
+        <div v-else class="overflow-x-auto">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead class="w-[80px]">ID</TableHead>
@@ -43,6 +44,7 @@
             </TableRow>
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
 
@@ -225,8 +227,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
-  padding: 16px;
-}
+.page { padding: 16px; }
 </style>
 

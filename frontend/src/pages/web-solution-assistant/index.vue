@@ -1,8 +1,8 @@
 <template>
 
-    <div class="flex h-full gap-responsive bg-background p-responsive overflow-hidden">
+    <div class="flex h-full min-h-0 gap-responsive bg-background p-responsive">
       <!-- 左侧表单区域 -->
-      <div class="flex w-full h-full min-h-0 flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[400px]">
+      <div class="flex w-full h-full min-h-0 min-w-0 flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[280px] sm:min-w-[320px] md:min-w-[360px] lg:min-w-[380px]">
         <!-- 模板选择区域 -->
         <Card class="flex flex-col flex-1 min-h-0">
           <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
@@ -157,7 +157,7 @@
       </div>
 
       <!-- 右侧内容区域 -->
-      <div class="flex-1 overflow-hidden rounded-lg bg-background min-w-0">
+      <div class="flex-1 min-w-0 min-h-0 overflow-auto rounded-lg bg-background">
         <rich-text-editor 
           ref="richTextEditorRefs"
           :templateTitle="templateTitle"

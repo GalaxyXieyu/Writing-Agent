@@ -6,11 +6,23 @@
 			'hover:bg-accent hover:text-accent-foreground',
 			'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
 			isActive && 'bg-accent text-accent-foreground',
+			// 响应式文字显示：在小屏幕上隐藏文字，只显示图标
+			'group/sidebar',
 			className
 		)"
 		v-bind="$attrs"
 	>
 		<slot />
+		<span
+			class="transition-opacity duration-300 overflow-hidden"
+			:class="{
+				// sm 以下隐藏文字，md 及以上显示
+				'opacity-0 w-0': true,
+				'sm:opacity-100 sm:w-auto': true
+			}"
+		>
+			<slot name="text" />
+		</span>
 	</component>
 </template>
 

@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
+import os
 
 def setup_logger():
     # 创建一个日志记录器
@@ -8,6 +9,8 @@ def setup_logger():
 
     # 创建一个 TimedRotatingFileHandler，并设置日志文件名
     log_filename = "logs/smartagent2.0.log"
+    # 确保日志目录存在
+    os.makedirs(os.path.dirname(log_filename), exist_ok=True)
     file_handler = TimedRotatingFileHandler(log_filename, when="midnight", interval=1, backupCount=30)
     file_handler.suffix = "%Y-%m-%d-%H-%M-%S.log"
     file_handler.encoding = "utf-8"

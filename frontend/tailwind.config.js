@@ -6,6 +6,17 @@ export default {
 		'./src/**/*.{vue,js,ts,jsx,tsx}',
 	],
 	theme: {
+		container: {
+			center: true,
+			padding: {
+				DEFAULT: '1rem',
+				sm: '1rem',
+				md: '1.25rem',
+				lg: '1.5rem',
+				xl: '2rem',
+				'2xl': '2.5rem',
+			},
+		},
 		extend: {
 			borderRadius: {
 				lg: 'var(--radius)',

@@ -20,6 +20,7 @@ async def init_database():
     # 仅需导入一次以触发表注册
     from models import model_config  # noqa: F401
     from models import prompt_config  # noqa: F401
+    from models import auth  # noqa: F401  确保用户与邀请表注册
     
     engine = get_db_engine()
     async with engine.begin() as conn:
@@ -48,6 +49,58 @@ async def migrate_database(engine):
     
     async with AsyncSessionLocal() as session:
         try:
+            # 1) ai_user 表新增列：is_admin, parent_admin_id
+            result = await session.execute(
+                text("""
+                    SELECT COLUMN_NAME FROM information_schema.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ai_user'
+                """)
+            )
+            cols = {row[0] for row in result.fetchall()}
+            if 'is_admin' not in cols:
+                mylog.info("添加 ai_user.is_admin 列...")
+                await session.execute(
+                    text("""
+                        ALTER TABLE ai_user 
+                        ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否管理员，1是，0否'
+                        AFTER status
+                    """)
+                )
+            if 'parent_admin_id' not in cols:
+                mylog.info("添加 ai_user.parent_admin_id 列...")
+                await session.execute(
+                    text("""
+                        ALTER TABLE ai_user 
+                        ADD COLUMN parent_admin_id VARCHAR(255) NULL COMMENT '所属管理员用户ID（成员归属）'
+                        AFTER is_admin
+                    """)
+                )
+
+            # 2) ai_invite 邀请表不存在则创建
+            result = await session.execute(
+                text("""
+                    SELECT COUNT(*) FROM information_schema.TABLES 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ai_invite'
+                """)
+            )
+            table_exists = result.scalar() > 0
+            if not table_exists:
+                mylog.info("创建表 ai_invite ...")
+                await session.execute(
+                    text("""
+                        CREATE TABLE ai_invite (
+                            id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+                            code VARCHAR(64) NOT NULL UNIQUE COMMENT '邀请码',
+                            admin_id VARCHAR(255) NOT NULL COMMENT '邀请方管理员用户ID',
+                            status VARCHAR(16) NOT NULL DEFAULT 'unused' COMMENT '状态：unused/used/expired',
+                            expire_time DATETIME NULL COMMENT '过期时间',
+                            used_by_user_id VARCHAR(255) NULL COMMENT '被谁使用',
+                            create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                            KEY idx_admin_id (admin_id)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员邀请表'
+                    """)
+                )
+
             # 检查并添加 ai_create_template.example_output 列
             result = await session.execute(
                 text("""

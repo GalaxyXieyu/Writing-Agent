@@ -29,21 +29,10 @@ onMounted(async () => {
 @use 'styles/globals.scss';
 
 /* 只在非登录页面应用背景色，避免覆盖登录页面的 Tailwind 样式 */
-body:not(.login-page) {
-	background-color: #f9fbff;
-	overflow: hidden;
-	height: 100vh;
-}
+body:not(.login-page) { background-color: #f9fbff; }
 
-html {
-	overflow: hidden;
-	height: 100vh;
-}
-
-#app {
-	height: 100vh;
-	overflow: hidden;
-}
+/* 放开文档滚动与固定高度，交由布局内的滚动容器接管 */
+html, body, #app { height: auto; min-height: 100vh; overflow: visible; }
 
 :deep(.simplebar-scrollbar) {
 	&::before {

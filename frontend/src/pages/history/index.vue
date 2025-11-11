@@ -1,10 +1,11 @@
+
 <template>
-	<div class="history-page">
+	<div class="history-page min-h-0">
 		<Card>
 			<CardHeader>
 				<div class="page-header">
 					<CardTitle>生成历史</CardTitle>
-					<div class="relative w-[300px]">
+                    <div class="relative w-full max-w-[300px]">
 						<svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 						</svg>
@@ -22,14 +23,15 @@
 					<div class="text-muted-foreground">加载中...</div>
 				</div>
 
-				<Table v-else>
+				<div v-else class="overflow-x-auto">
+				<Table>
 					<TableHeader>
 						<TableRow>
 							<TableHead class="min-w-[200px]">文章标题</TableHead>
 							<TableHead class="w-[150px]">使用模板</TableHead>
 							<TableHead class="w-[180px]">生成时间</TableHead>
 							<TableHead class="w-[100px]">状态</TableHead>
-							<TableHead class="w-[200px] fixed right">操作</TableHead>
+							<TableHead class="w-[200px] text-right">操作</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -42,8 +44,8 @@
 									{{ row.status === 'completed' ? '已完成' : '生成中' }}
 								</Badge>
 							</TableCell>
-							<TableCell>
-								<div class="flex gap-2">
+							<TableCell class="text-right">
+								<div class="inline-flex gap-2">
 									<Button variant="ghost" size="sm" @click="viewArticle(row)">查看</Button>
 									<Button variant="ghost" size="sm" @click="editArticle(row)">编辑</Button>
 									<Button variant="ghost" size="sm" @click="deleteArticle(row)">删除</Button>
@@ -57,6 +59,7 @@
 						</TableRow>
 					</TableBody>
 				</Table>
+				</div>
 
 				<div class="flex items-center justify-between mt-4">
 					<div class="text-sm text-muted-foreground">
@@ -266,10 +269,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.history-page {
-	padding: 20px;
-	min-height: calc(100vh - 100px);
-}
+.history-page { padding: 16px; }
 
 .page-header {
 	display: flex;

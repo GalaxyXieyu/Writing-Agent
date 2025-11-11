@@ -5,8 +5,8 @@
         <CardTitle>模型配置</CardTitle>
       </CardHeader>
       <CardContent>
-        <div class="toolbar">
-          <Input v-model="q.name" placeholder="按名称搜索" class="w-[220px]" />
+        <div class="toolbar flex flex-wrap gap-2">
+          <Input v-model="q.name" placeholder="按名称搜索" class="w-full sm:w-[220px]" />
           <Button @click="refresh">查询</Button>
           <Button @click="openEdit()">新增</Button>
         </div>
@@ -15,7 +15,8 @@
           <div class="text-muted-foreground">加载中...</div>
         </div>
 
-        <Table v-else>
+        <div v-else class="overflow-x-auto">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead class="w-[80px]">ID</TableHead>
@@ -51,6 +52,7 @@
             </TableRow>
           </TableBody>
         </Table>
+        </div>
 
         <div class="flex items-center justify-between mt-4">
           <div class="text-sm text-muted-foreground">
@@ -261,9 +263,7 @@ refresh()
 </script>
 
 <style scoped>
-.page {
-  padding: 16px;
-}
+.page { padding: 16px; }
 
 .toolbar {
   display: flex;

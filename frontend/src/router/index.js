@@ -51,6 +51,26 @@ const routes = [
 					title: '提示词配置',
 				},
 			},
+      {
+        path: '/admin/members',
+        name: 'admin-members',
+        component: () => import('@/pages/admin/members/index.vue'),
+        meta: {
+          title: '成员管理',
+          requiresAuth: true,
+          requiresAdmin: true,
+        },
+      },
+      {
+        path: '/admin/records',
+        name: 'admin-records',
+        component: () => import('@/pages/admin/records/index.vue'),
+        meta: {
+          title: '成员生成记录',
+          requiresAuth: true,
+          requiresAdmin: true,
+        },
+      },
 		],
 	},
 ];
@@ -67,6 +87,8 @@ router.beforeEach((to, from, next) => {
 
 	if (to.meta.requiresAuth && !isAuthenticated) {
 		next('/login');
+  } else if (to.meta.requiresAdmin && !userStore?.profile?.is_admin) {
+    next('/');
 	} else if (to.path === '/login' && isAuthenticated) {
 		next('/web-solution-assistant');
 	} else {
