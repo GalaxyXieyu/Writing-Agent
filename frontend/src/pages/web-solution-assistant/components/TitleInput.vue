@@ -48,14 +48,14 @@
       
       <!-- 内容区域 -->
       <div v-show="!item.isFirstTitleClose" class="p-5 space-y-5">
-        <!-- 一级标题输入 -->
+        <!-- 一级标题输入：压缩 textarea 高度，适配 1920×1080 单屏展示 -->
         <div class="space-y-2.5">
           <Label class="text-responsive-sm font-medium text-foreground">标题名称</Label>
           <Textarea
             v-model="item.titleName"
             placeholder="输入一级标题"
             :maxlength="100"
-            class="min-h-[90px] resize-none w-full"
+            class="min-h-[70px] resize-none w-full"
           />
           <p class="text-right text-responsive-xs text-muted-foreground">{{ item.titleName?.length || 0 }}/100</p>
         </div>
@@ -67,7 +67,7 @@
             v-model="item.writingRequirement"
             placeholder="输入写作要求"
             :maxlength="300"
-            class="min-h-[120px] resize-none w-full"
+            class="min-h-[90px] resize-none w-full"
           />
           <p class="text-right text-responsive-xs text-muted-foreground">{{ item.writingRequirement?.length || 0 }}/300</p>
         </div>
@@ -110,7 +110,7 @@
                   v-model="childrenItem.titleName"
                   placeholder="输入二级标题"
                   :maxlength="100"
-                  class="min-h-[80px] resize-none w-full"
+                  class="min-h-[60px] resize-none w-full"
                 />
                 <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.titleName?.length || 0 }}/100</p>
               </div>
@@ -120,7 +120,7 @@
                   v-model="childrenItem.writingRequirement"
                   placeholder="输入写作要求"
                   :maxlength="300"
-                  class="min-h-[100px] resize-none w-full"
+                  class="min-h-[80px] resize-none w-full"
                 />
                 <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.writingRequirement?.length || 0 }}/300</p>
               </div>
@@ -153,7 +153,7 @@
                       v-model="thirdLevelItem.titleName"
                       placeholder="输入三级标题"
                       :maxlength="100"
-                      class="min-h-[70px] resize-none w-full text-responsive-sm"
+                      class="min-h-[50px] resize-none w-full text-responsive-sm"
                     />
                     <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.titleName?.length || 0 }}/100</p>
                   </div>
@@ -163,7 +163,7 @@
                       v-model="thirdLevelItem.writingRequirement"
                       placeholder="输入写作要求"
                       :maxlength="300"
-                      class="min-h-[80px] resize-none w-full text-responsive-sm"
+                      class="min-h-[60px] resize-none w-full text-responsive-sm"
                     />
                     <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.writingRequirement?.length || 0 }}/300</p>
                   </div>

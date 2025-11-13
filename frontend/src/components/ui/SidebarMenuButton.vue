@@ -15,11 +15,6 @@
 		<slot />
 		<span
 			class="transition-opacity duration-300 overflow-hidden"
-			:class="{
-				// sm 以下隐藏文字，md 及以上显示
-				'opacity-0 w-0': true,
-				'sm:opacity-100 sm:w-auto': true
-			}"
 		>
 			<slot name="text" />
 		</span>

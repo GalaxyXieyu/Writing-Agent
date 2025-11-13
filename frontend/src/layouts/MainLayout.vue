@@ -1,5 +1,5 @@
 <template>
-	<div class="flex min-h-screen flex-col bg-background">
+	<div class="flex h-screen flex-col bg-background">
 		<!-- 顶部 Header -->
 		<header class="flex h-16 shrink-0 items-center justify-between border-b bg-background px-3 sm:px-4 md:px-6">
 			<div class="flex items-center gap-2 sm:gap-3 md:gap-4">
@@ -158,11 +158,9 @@
 				</div>
 			</transition>
 
-			<!-- 主内容区 -->
-			<main class="flex-1 min-w-0 overflow-auto bg-background p-page-sm sm:p-page">
-				<div class="h-full w-full container mx-auto px-4 md:px-6 xl:px-8 max-w-screen-2xl">
-					<router-view />
-				</div>
+			<!-- 主内容区：高度由父级控制，具体页面内部单独滚动 -->
+			<main class="flex-1 min-w-0 min-h-0 overflow-hidden bg-background px-3 sm:px-4 md:px-6">
+				<router-view />
 			</main>
 		</div>
 	</div>

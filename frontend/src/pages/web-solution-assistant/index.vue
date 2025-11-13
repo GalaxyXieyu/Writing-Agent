@@ -1,11 +1,18 @@
 <template>
 
-    <div class="flex h-full min-h-0 gap-responsive bg-background p-responsive">
-      <!-- 左侧表单区域 -->
-      <div class="flex w-full h-full min-h-0 min-w-0 flex-col gap-responsive md:w-2/5 lg:w-2/5 xl:w-1/3 min-w-[280px] sm:min-w-[320px] md:min-w-[360px] lg:min-w-[380px]">
+	<div
+	  ref="layoutRef"
+	  class="h-full min-h-0 bg-background p-responsive gap-responsive overflow-hidden grid grid-cols-[minmax(320px,40%)_minmax(0,1fr)]"
+	>
+	  <!-- 左侧表单区域：始终显示，先恢复两栏基线布局 -->
+	  <div
+	    class="w-full h-full min-h-0 min-w-0 md:min-w-[340px]"
+	  >
+			<!-- 左侧整体滚动容器：限制高度，内部滚动 -->
+			<div class="flex flex-col gap-responsive w-full h-full min-h-0 overflow-y-auto pr-1">
         <!-- 模板选择区域 -->
-        <Card class="flex flex-col flex-1 min-h-0">
-          <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
+			<Card class="flex flex-col flex-1 min-h-0">
+			  <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
             <CardTitle class="text-responsive-base font-semibold">写作模板</CardTitle>
             <Button variant="ghost" size="sm" @click="lookTemplateDialog" class="h-auto p-0 text-primary text-responsive-sm">
               查看全部模板
@@ -15,16 +22,21 @@
             </Button>
           </CardHeader>
           <CardContent class="flex flex-1 min-h-0 flex-col gap-4 px-responsive pb-responsive">
-            <div class="flex items-center gap-2">
-              <Input v-model="search" placeholder="搜索模板" class="flex-1" />
-              <el-select v-model="leftFilterType" size="small" style="width: 140px">
-                <el-option label="全部" value="all" />
-                <el-option label="写作模板" value="1" />
-                <el-option label="文件模板" value="2" />
-                <el-option label="AI生成" value="3" />
-              </el-select>
-            </div>
-            <div class="flex-1 min-h-0 overflow-y-auto border-y">
+					<!-- 顶部搜索 + 筛选：在宽度不足时自动换行，下拉框单独占一行 -->
+					<div class="flex flex-wrap items-center gap-2">
+						<div class="flex-1 min-w-[200px]">
+							<Input v-model="search" placeholder="搜索模板" class="w-full" />
+						</div>
+						<div class="flex-shrink-0 w-full sm:w-auto">
+							<el-select v-model="leftFilterType" size="small" class="w-full sm:w-[140px]">
+								<el-option label="全部" value="all" />
+								<el-option label="写作模板" value="1" />
+								<el-option label="文件模板" value="2" />
+								<el-option label="AI生成" value="3" />
+							</el-select>
+						</div>
+					</div>
+            <div class="overflow-y-auto border-y max-h-[260px]">
               <el-table 
                 ref="tableRef" 
                 :key="tableKey" 
@@ -48,58 +60,70 @@
           </CardContent>
         </Card>
 
-        <!-- 表单输入区域 -->
-        <Card class="flex flex-1 flex-col overflow-hidden min-h-0">
-          <CardContent class="flex flex-1 flex-col gap-responsive overflow-y-auto p-responsive min-h-0 pb-24">
-            <!-- 顶部：模型选择 + 全屏大纲入口 -->
-            <div class="flex items-center justify-between flex-shrink-0 mt-1 pt-2 pb-2 border-b border-border">
-              <div class="flex items-center gap-4">
-                <Label class="text-responsive-sm font-medium text-foreground/90 whitespace-nowrap flex-shrink-0 min-w-[80px]">模型选择</Label>
-                <ModelSelector v-model="currentModelId" @manage="openModelManage" />
-              </div>
-              <Button variant="outline" size="sm" @click="showOutlineFullscreen = true" class="gap-1">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/>
-                </svg>
-                编辑大纲
-              </Button>
-            </div>
+		<!-- 表单输入区域：进一步降低最大高度，尽量消除 main 层滚动，仅在卡片内部滚动 -->
+			<Card class="flex flex-1 flex-col min-h-0 overflow-hidden">
+			  <CardContent class="flex flex-1 flex-col gap-responsive p-responsive min-h-0 overflow-y-auto">
+					<!-- 顶部：模型选择 + 全屏大纲入口（按实际宽度自动换行） -->
+					<div
+					  ref="formHeaderRef"
+					  class="flex flex-wrap items-center gap-2 flex-shrink-0 mt-1 pt-2 pb-2 border-b border-border"
+					>
+					  <!-- 左侧：模型选择区域，设定舒适宽度与最小宽度 -->
+					  <div class="flex items-center gap-2 flex-[1_1_260px] min-w-[200px]">
+							<Label class="text-responsive-sm font-medium text-foreground/90 whitespace-nowrap flex-shrink-0">模型选择</Label>
+							<div class="flex-1 min-w-0">
+								<ModelSelector v-model="currentModelId" />
+							</div>
+						</div>
+						<!-- 右侧：编辑大纲按钮，空间不够时整体掉到下一行 -->
+						<div class="flex-shrink-0 flex-[0_0_120px]">
+							<Button
+							  variant="outline"
+							  size="sm"
+							  @click="showOutlineFullscreen = true"
+							  class="gap-1 w-full"
+							>
+								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+								  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/>
+								</svg>
+								编辑大纲
+							</Button>
+						</div>
+					</div>
 
-            <!-- 文章标题 -->
-            <div v-if="!showOutlineFullscreen" class="space-y-2 flex-shrink-0 mt-4">
-              <div class="flex items-center justify-between">
+            <!-- 文章标题：改为单行输入框，整体间距更紧凑 -->
+	            <div v-if="!showOutlineFullscreen" class="space-y-1.5 flex-shrink-0 mt-2">
+	              <div class="flex items-center justify-between mb-1">
                 <Label for="template-title" class="text-responsive-sm font-medium">文章标题</Label>
                 <Button variant="ghost" size="sm" @click="saveTemplateDialog" class="h-auto p-0 text-primary text-responsive-xs">
                   保存模板
                 </Button>
               </div>
-              <Textarea
+              <Input
                 id="template-title"
                 v-model="templateTitle"
                 placeholder="输入文章标题"
                 :maxlength="100"
-                class="min-h-responsive"
               />
-              <p class="text-right text-responsive-xs text-muted-foreground">{{ templateTitle.length }}/100</p>
+	              <p class="mt-0.5 text-right text-responsive-xs text-muted-foreground">{{ templateTitle.length }}/100</p>
             </div>
 
-            <!-- 文章要求 -->
-            <div v-if="!showOutlineFullscreen" class="space-y-2 flex-shrink-0 mt-4">
+	            <!-- 文章要求：单行为主，可手动拖拽变大，整体间距更紧凑 -->
+	            <div v-if="!showOutlineFullscreen" class="space-y-1.5 flex-shrink-0 mt-2">
               <Label for="article-requirement" class="text-responsive-sm font-medium">文章要求</Label>
               <Textarea
                 id="article-requirement"
                 v-model="articleRequirement"
                 placeholder="请输入文章要求"
                 :maxlength="100"
-                class="min-h-responsive"
               />
-              <p class="text-right text-responsive-xs text-muted-foreground">{{ articleRequirement.length }}/100</p>
+	              <p class="mt-0.5 text-right text-responsive-xs text-muted-foreground">{{ articleRequirement.length }}/100</p>
             </div>
 
-            <!-- 大纲列表 + 编辑区（与标题/要求同层级，统一滚动） -->
-            <div class="mt-4" v-loading="loading" element-loading-text="Loading...">
-              <!-- 大纲目录（仅内容决定高度，不设内部滚动） -->
-              <div class="border rounded-lg p-2">
+            <!-- 大纲列表 + 编辑区：在表单卡片内部再做一次高度控制，避免无限向下撑高 -->
+            <div class="mt-4 space-y-3" v-loading="loading" element-loading-text="Loading...">
+              <!-- 大纲目录：限制高度，自身滚动 -->
+              <div class="border rounded-lg p-2 max-h-[200px] overflow-y-auto">
                 <div class="flex items-center justify-between mb-2">
                   <Label class="text-responsive-sm font-medium">大纲列表</Label>
                   <div class="w-52">
@@ -128,15 +152,15 @@
                   </li>
                 </ul>
               </div>
-              <!-- 编辑区（不设置overflow，与外层同一滚动） -->
-              <div class="mt-3">
+              <!-- 编辑区：让一级/二级/三级标题区域整体在表单卡片内部滚动 -->
+              <div class="mt-1">
                 <title-input :title-data="titleData"></title-input>
               </div>
             </div>
           </CardContent>
 
-          <!-- 底部操作栏 -->
-          <div class="border-t bg-background p-responsive flex-shrink-0 sticky bottom-0 z-10">
+			  <!-- 底部操作栏 -->
+			  <div class="border-t bg-background p-responsive flex-shrink-0">
             <Button 
               v-if="!isCreate" 
               @click="createArticle"
@@ -152,20 +176,65 @@
             >
               暂停生成
             </Button>
-          </div>
-        </Card>
-      </div>
+			  </div>
+			</Card>
+		</div>
+		</div>
 
-      <!-- 右侧内容区域 -->
-      <div class="flex-1 min-w-0 min-h-0 overflow-auto rounded-lg bg-background">
-        <rich-text-editor 
-          ref="richTextEditorRefs"
-          :templateTitle="templateTitle"
-          @requestComplete="handleRequestComplete"
-          @requestError="handleRequestError"
-        />
-      </div>
+		<!-- 右侧内容区域：编辑器始终优先显示，占据剩余空间 -->
+	  <div class="flex-1 min-w-0 h-full min-h-0 overflow-auto rounded-lg bg-background">
+	        <rich-text-editor 
+	          ref="richTextEditorRefs"
+	          :templateTitle="templateTitle"
+	          @requestComplete="handleRequestComplete"
+	          @requestError="handleRequestError"
+	        />
+	      </div>
+	    </div>
+
+    <!-- 小屏下的表单入口：固定在底部，当表单被折叠（只保留编辑器）时显示 -->
+    <div v-if="layoutMode === 'editor-only'" class="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2">
+      <Button @click="showMobileForm = true" class="shadow-lg px-4 py-2">
+        写作设置
+      </Button>
     </div>
+
+    <!-- 小屏/紧凑模式下的表单弹窗：复用核心字段，避免挤占编辑器区域 -->
+    <Dialog
+      v-model="showMobileForm"
+      className="w-[95vw] max-w-[420px] max-h-[90vh] p-0 overflow-hidden"
+    >
+      <div class="grid grid-rows-[auto,1fr,auto] h-full">
+        <DialogHeader class="px-4 py-3 border-b">
+          <DialogTitle>写作设置</DialogTitle>
+        </DialogHeader>
+        <div class="overflow-y-auto px-4 py-3 space-y-4">
+          <div class="space-y-2">
+            <Label class="text-sm font-medium">模型选择</Label>
+            <ModelSelector v-model="currentModelId" />
+          </div>
+          <div class="space-y-2">
+            <Label class="text-sm font-medium">文章标题</Label>
+            <Input v-model="templateTitle" placeholder="输入文章标题" />
+          </div>
+          <div class="space-y-2">
+            <Label class="text-sm font-medium">文章要求</Label>
+            <Textarea v-model="articleRequirement" placeholder="请输入文章要求" class="min-h-[80px]" />
+          </div>
+          <Button
+            variant="outline"
+            class="w-full"
+            @click="() => { showMobileForm = false; showOutlineFullscreen = true }"
+          >
+            编辑大纲
+          </Button>
+        </div>
+        <DialogFooter class="px-4 py-3 border-t">
+          <Button variant="outline" @click="showMobileForm = false">关闭</Button>
+          <Button class="ml-2" @click="() => { showMobileForm = false; createArticle() }">生成文章</Button>
+        </DialogFooter>
+      </div>
+    </Dialog>
 
     <!-- 大纲编辑弹窗（居中，限制高度，内容区滚动，底部固定） -->
     <Dialog v-model="showOutlineFullscreen" :closeOnOverlay="true" className="w-[80vw] max-w-[1100px] max-h-[85vh] p-0 overflow-hidden">
@@ -596,6 +665,8 @@ const createTitle = ref('')
 const createNeed = ref('')
 const templateName = ref('')
 const showCreateTemplateDialog = ref(false);
+// 小屏写作表单弹窗开关
+const showMobileForm = ref(false)
 const builderVisible = ref(false)
 const usuallyTemplateData = ref([])
 const tableRef = ref(null);

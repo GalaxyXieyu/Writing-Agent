@@ -114,12 +114,14 @@
 }
 
 // 响应式间距类
+
+// 响应式间距类（适度收紧大屏上的最大间距，避免布局过于松散）
 .gap-responsive {
-	gap: clamp(0.75rem, 1.5vw, 1.5rem);
+	gap: clamp(0.75rem, 1vw, 1.25rem);
 }
 
 .p-responsive {
-	padding: clamp(0.75rem, 1.5vw, 1.5rem);
+	padding: clamp(0.75rem, 1vw, 1.25rem);
 }
 
 .px-responsive {

@@ -14,3 +14,7 @@ CREATE TABLE IF NOT EXISTS ai_task (
   INDEX idx_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步任务表';
 
+-- 若 ai_create_template 表缺少 example_output 列则追加（compose 首启时幂等）
+ALTER TABLE ai_create_template 
+  ADD COLUMN IF NOT EXISTS example_output TEXT NULL COMMENT '示例输出内容';
+

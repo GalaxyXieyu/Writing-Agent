@@ -20,6 +20,11 @@ from models.solution import AiSolutionSave
 from models.templates import WritingTemplate, AiTemplateTitle, AICreateTemplate, AIUsuallyTemplate
 from models.file import AiFileRel
 from config import DATABASE_URL
+from initialization import migrate_database, init_default_prompts
+
+# 确保所有模型注册到 Base（包括新表）
+from models import model_config  # noqa: F401
+from models import prompt_config  # noqa: F401
 
 async def init_database():
     """初始化数据库"""
@@ -92,6 +97,16 @@ async def init_database():
             else:
                 print("测试用户已存在，跳过创建。")
         
+        # 运行数据库迁移（新增列、缺失表等）
+        print("\n执行数据库迁移（幂等）...")
+        await migrate_database(engine)
+        print("数据库迁移完成！")
+
+        # 初始化提示词配置（幂等）
+        print("\n初始化默认提示词配置（幂等）...")
+        await init_default_prompts(engine)
+        print("提示词配置初始化完成！")
+
         print("\n" + "=" * 100)
         print("数据库初始化完成！")
         print("=" * 100)

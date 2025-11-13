@@ -139,7 +139,7 @@ export const selectTemplateTitle = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/file/selectTemplateTitle`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -151,7 +151,7 @@ export const createTemplate = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/create`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -163,7 +163,7 @@ export const templateRefresh12 = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/refresh`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -175,7 +175,7 @@ export const templateSave = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/templateSave`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -187,7 +187,7 @@ export const templateDelete = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/templateDelete`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -199,7 +199,7 @@ export const templateUpdate = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/templateUpdate`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -211,7 +211,7 @@ export const templateCreate = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/createTemplateEntryTable`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -223,7 +223,7 @@ export const createTemplateSelect = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/queryCreateTemplateList`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -235,7 +235,7 @@ export const createTemplateReName = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/reCreateTemplateName`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -247,7 +247,7 @@ export const deleteCreateTemplate = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/deleteCreateTemplate`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -259,7 +259,7 @@ export const usuallyTemplateQuery = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/queryUsuallyTemplate`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -271,7 +271,7 @@ export const allTemplateQuery = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/queryTemplateList`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };
@@ -283,7 +283,7 @@ export const templateReName = (params) => {
     return axios({
         method: 'POST',
         url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/templates/reTemplateName`,
-        data: params
+        data: params,
         headers: (() => { try { const raw = localStorage.getItem('userStore'); const data = raw ? JSON.parse(raw) : {}; const t = data?.token; return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }})()
     });
 };

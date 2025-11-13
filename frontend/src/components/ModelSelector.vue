@@ -1,23 +1,17 @@
 <template>
-  <div class="model-selector">
-    <el-select 
-      v-model="innerValue" 
-      placeholder="请选择模型" 
-      @change="onChange" 
-      :loading="loading" 
-      class="flex-1 min-w-[200px]"
-    >
-      <el-option v-for="m in list" :key="m.id" :label="`${m.name} (${m.model})`" :value="m.id"/>
-    </el-select>
-    <el-button 
-      type="primary" 
-      link 
-      @click="$emit('manage')" 
-      class="ml-3 text-primary hover:text-primary/80"
-    >
-      管理模型
-    </el-button>
-  </div>
+	<div class="model-selector">
+		<div class="selector-inner">
+			<el-select 
+				v-model="innerValue" 
+				placeholder="请选择模型" 
+				@change="onChange" 
+				:loading="loading" 
+				class="w-full"
+			>
+				<el-option v-for="m in list" :key="m.id" :label="`${m.name} (${m.model})`" :value="m.id"/>
+			</el-select>
+		</div>
+	</div>
 </template>
 
 <script setup>
@@ -58,9 +52,13 @@ onMounted(refresh)
 
 <style scoped>
 .model-selector { 
-  display: flex; 
-  align-items: center; 
-  width: 100%;
-  gap: 0.75rem;
+	display: flex; 
+	align-items: center; 
+	width: 100%;
+}
+
+.selector-inner {
+	flex: 1;
+	min-width: 0; /* 允许在父级 flex 下收缩，不把整行撑爆 */
 }
 </style>
