@@ -76,6 +76,28 @@ async def migrate_database(engine):
                     """)
                 )
 
+            # 管理员账号回填：若当前没有任何管理员用户，则将默认 admin 账户设为管理员
+            try:
+                result = await session.execute(
+                    text("""
+                        SELECT COUNT(*) FROM ai_user WHERE is_admin = 1
+                    """)
+                )
+                admin_cnt = result.scalar() or 0
+                if admin_cnt == 0:
+                    mylog.info("未检测到管理员用户，尝试将 admin 账户设为管理员(is_admin=1)...")
+                    await session.execute(
+                        text("""
+                            UPDATE ai_user 
+                            SET is_admin = 1 
+                            WHERE user_id = 'admin' OR username = 'admin'
+                        """)
+                    )
+                    await session.commit()
+            except Exception as e:
+                mylog.error(f"管理员账号回填失败: {e}")
+                await session.rollback()
+
             # 2) ai_invite 邀请表不存在则创建
             result = await session.execute(
                 text("""
