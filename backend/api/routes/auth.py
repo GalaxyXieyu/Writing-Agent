@@ -83,71 +83,71 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_async_db))
         )
 
 
-@router.post("/register")
-async def register(request: LoginRequest, db: AsyncSession = Depends(get_async_db)):
-    """
-    用户注册接口
-    """
-    try:
-        # 创建新用户
-        new_user = await create_user(
-            db=db,
-            username=request.username,
-            password=request.password
-        )
-        
-        # 自动登录，生成 token
-        token = generate_token(new_user.user_id)
-        success = await save_token(db, new_user.user_id, token)
-        
-        if not success:
-            return JSONResponse(
-                status_code=200,
-                content=jsonable_encoder({
-                    "code": 500,
-                    "message": "注册成功但Token生成失败",
-                    "type": "warning",
-                    "data": None
-                })
-            )
-        
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder({
-                "code": 200,
-                "message": "注册成功",
-                "type": "success",
-                "data": {
-                    "token": token,
-                    "user_id": new_user.user_id,
-                    "username": new_user.username,
-                    "name": new_user.name,
-                    "is_admin": bool(getattr(new_user, 'is_admin', 0)),
-                    "parent_admin_id": getattr(new_user, 'parent_admin_id', None)
-                }
-            })
-        )
-    except ValueError as e:
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder({
-                "code": 400,
-                "message": str(e),
-                "type": "error",
-                "data": None
-            })
-        )
-    except Exception as e:
-        mylog.error(f"注册失败: {str(e)}")
-        return JSONResponse(
-            status_code=200,
-            content=jsonable_encoder({
-                "code": 500,
-                "message": f"注册失败: {str(e)}",
-                "type": "error",
-                "data": None
-            })
-        )
+# @router.post("/register")
+# async def register(request: LoginRequest, db: AsyncSession = Depends(get_async_db)):
+#     """
+#     用户注册接口
+#     """
+#     try:
+#         # 创建新用户
+#         new_user = await create_user(
+#             db=db,
+#             username=request.username,
+#             password=request.password
+#         )
+#         
+#         # 自动登录，生成 token
+#         token = generate_token(new_user.user_id)
+#         success = await save_token(db, new_user.user_id, token)
+#         
+#         if not success:
+#             return JSONResponse(
+#                 status_code=200,
+#                 content=jsonable_encoder({
+#                     "code": 500,
+#                     "message": "注册成功但Token生成失败",
+#                     "type": "warning",
+#                     "data": None
+#                 })
+#             )
+#         
+#         return JSONResponse(
+#             status_code=200,
+#             content=jsonable_encoder({
+#                 "code": 200,
+#                 "message": "注册成功",
+#                 "type": "success",
+#                 "data": {
+#                     "token": token,
+#                     "user_id": new_user.user_id,
+#                     "username": new_user.username,
+#                     "name": new_user.name,
+#                     "is_admin": bool(getattr(new_user, 'is_admin', 0)),
+#                     "parent_admin_id": getattr(new_user, 'parent_admin_id', None)
+#                 }
+#             })
+#         )
+#     except ValueError as e:
+#         return JSONResponse(
+#             status_code=200,
+#             content=jsonable_encoder({
+#                 "code": 400,
+#                 "message": str(e),
+#                 "type": "error",
+#                 "data": None
+#             })
+#         )
+#     except Exception as e:
+#         mylog.error(f"注册失败: {str(e)}")
+#         return JSONResponse(
+#             status_code=200,
+#             content=jsonable_encoder({
+#                 "code": 500,
+#                 "message": f"注册失败: {str(e)}",
+#                 "type": "error",
+#                 "data": None
+#             })
+#         )
 
 
 @router.post("/checkToken")
