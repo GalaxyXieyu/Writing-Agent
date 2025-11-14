@@ -46,7 +46,9 @@ export const http = (opt) => {
 		})
 		.catch((error) => {
 			if (error.response) {
-				const message = error.response.data?.message || '请求错误';
+				const data = error.response.data || {};
+				// 兼容后端使用 HTTPException(detail=...) 的返回格式
+				const message = data.message || data.detail || data.error || data.msg || `请求错误(${error.response.status})`;
 				ElMessage.error(message);
 			} else {
 				ElMessage.error('网络错误或异常');

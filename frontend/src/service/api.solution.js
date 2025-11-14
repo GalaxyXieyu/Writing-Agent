@@ -84,6 +84,42 @@ export const getFileList = (data) => {
     });
 };
 
+// 方案历史：按手机号查询
+export const querySolution = (data) => {
+    return http({
+        method: 'POST',
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/querySolution`,
+        data,
+    });
+};
+
+// 方案详情：按ID查询
+export const getSolution = (data) => {
+    return http({
+        method: 'POST',
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/getSolution`,
+        data,
+    });
+};
+
+// 方案保存：生成完成后入库
+export const solutionSave = (data) => {
+    return http({
+        method: 'POST',
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/solutionSave`,
+        data,
+    });
+};
+
+// 方案删除：按ID软删除
+export const deleteSolution = (data) => {
+    return http({
+        method: 'POST',
+        url: `${VITE_SOLUTION_API_BASE_PREFIX}${VITE_SOLUTION_API_PROXY_PREFIX}/solution/deleteSolution`,
+        data,
+    });
+};
+
 /**
  * @description: 删除文件
  * @return {promise}

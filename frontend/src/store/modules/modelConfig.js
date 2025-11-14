@@ -37,6 +37,10 @@ export const useModelConfigStore = defineStore('modelConfig', {
       await modelConfigApi.setDefault(id)
       await this.fetchList()
     },
+    async verifyModel(modelId, userId, body) {
+      const res = await modelConfigApi.verify(modelId, userId, body)
+      return res
+    },
     setCurrent(id) {
       this.currentModelId = id
     },

@@ -139,30 +139,8 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const total = ref(0);
 
-// 模拟历史数据
-const historyList = ref([
-	{
-		id: 1,
-		title: '关于数字化转型的思考',
-		templateName: '企业转型模板',
-		createTime: new Date('2024-01-15 10:30:00'),
-		status: 'completed',
-	},
-	{
-		id: 2,
-		title: '人工智能在医疗领域的应用',
-		templateName: '科技前沿模板',
-		createTime: new Date('2024-01-14 15:20:00'),
-		status: 'completed',
-	},
-	{
-		id: 3,
-		title: '绿色能源发展前景分析',
-		templateName: '行业分析模板',
-		createTime: new Date('2024-01-13 09:10:00'),
-		status: 'generating',
-	},
-]);
+import { querySolution, deleteSolution } from '@/service/api.solution';
+const historyList = ref([]);
 
 const filteredList = computed(() => {
 	let list = historyList.value;
@@ -231,8 +209,7 @@ const handlePageChange = (page) => {
 };
 
 const viewArticle = (row) => {
-	// TODO: 跳转到查看文章页面
-	ElMessage.info('查看功能开发中');
+    router.push({ path: '/history/detail', query: { id: row.id } });
 };
 
 const editArticle = (row) => {
@@ -250,21 +227,42 @@ const deleteArticle = async (row) => {
 			cancelButtonText: '取消',
 			type: 'warning',
 		});
-		// TODO: 调用删除 API
-		const index = historyList.value.findIndex(item => item.id === row.id);
-		if (index > -1) {
-			historyList.value.splice(index, 1);
-			ElMessage.success('删除成功');
-			total.value = filteredList.value.length;
-		}
+        // 调用删除 API
+        const res = await deleteSolution({ solution_id: String(row.id) });
+        if (res && res.code === 200) {
+            const index = historyList.value.findIndex(item => item.id === row.id);
+            if (index > -1) historyList.value.splice(index, 1);
+            ElMessage.success('删除成功');
+            total.value = filteredList.value.length;
+        } else {
+            ElMessage.error(res?.message || '删除失败');
+        }
 	} catch {
 		// 用户取消
 	}
 };
 
-onMounted(() => {
-	// TODO: 加载历史数据
-	total.value = historyList.value.length;
+onMounted(async () => {
+    const phone = (JSON.parse(localStorage.getItem('userStore') || '{}')?.profile?.mobile) || '';
+    try {
+        loading.value = true;
+        const res = await querySolution({ create_phone: phone, solution_title: '' });
+        // 后端返回结构：{ code, message, type, data: { solutionDatas: [], solutionCount, fileDatas, fileCont } }
+        const list = res?.data?.solutionDatas || res?.data || [];
+        const arr = Array.isArray(list) ? list : [];
+        historyList.value = arr.map(item => ({
+            id: item.solution_id,
+            title: item.solution_title,
+            templateName: '',
+            createTime: item.create_date,
+            status: 'completed',
+        }));
+        total.value = historyList.value.length;
+    } catch (e) {
+        // 忽略错误提示，页面显示暂无数据
+    } finally {
+        loading.value = false;
+    }
 });
 </script>
 

@@ -259,7 +259,11 @@ async def register_with_invite(request: RegisterWithInviteRequest, db: AsyncSess
             }))
         # 创建成员用户
         new_user = await create_user(db, username=request.username, password=request.password)
+        # 归属管理员
         new_user.parent_admin_id = invite.admin_id
+        # 若未提供手机号，默认用用户名作为手机号标识，便于后台按成员聚合记录
+        if not getattr(new_user, 'phone', None):
+            new_user.phone = new_user.username
         await db.commit()
         await db.refresh(new_user)
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
-from sqlalchemy import Column, String, Integer, Text, Date
+from sqlalchemy import Column, String, Integer, Text, DateTime
 from models.database import Base
 from .templates import TemplateChild, TemplateData
 
@@ -10,15 +10,16 @@ class AiSolutionSave(Base):
     """方案保存信息表"""
     __tablename__ = 'ai_solution_save'
     
-    solution_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False, comment='方案ID')
+    # 使用业务自生成主键：YYYYMMDD + 4位序列，例如 202511140001
+    solution_id = Column(String(20), primary_key=True, nullable=False, comment='方案ID')
     solution_title = Column(String(255), nullable=False, comment='方案标题')
     solution_content = Column(Text, nullable=False, comment='方案内容')
     create_phone = Column(String(255), comment='创建人手机号')
     create_name = Column(String(255), comment='创建人姓名')
-    create_date = Column(Date, nullable=False, comment='创建日期')
+    create_date = Column(DateTime, nullable=False, comment='创建时间')
     update_phone = Column(String(255), comment='更新人手机号')
     update_name = Column(String(255), comment='更新人姓名')
-    update_date = Column(Date, comment='更新日期')
+    update_date = Column(DateTime, comment='更新时间')
     status_cd = Column(String(255), nullable=False, comment='状态，Y有效，N无效')
 
 

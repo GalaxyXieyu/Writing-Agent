@@ -35,6 +35,14 @@ const routes = [
 					title: '生成历史',
 				},
 			},
+      {
+        path: '/history/detail',
+        name: 'history-detail',
+        component: () => import('@/pages/history/Detail.vue'),
+        meta: {
+          title: '历史详情',
+        },
+      },
 			{
 				path: '/model-config',
 				name: 'model-config',

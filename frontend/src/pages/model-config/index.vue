@@ -24,7 +24,7 @@
               <TableHead>模型</TableHead>
               <TableHead>Base URL</TableHead>
               <TableHead class="w-[80px]">默认</TableHead>
-              <TableHead class="w-[240px]">操作</TableHead>
+              <TableHead class="w-[320px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -39,6 +39,7 @@
               </TableCell>
               <TableCell>
                 <div class="flex gap-2">
+                  <Button variant="outline" size="sm" @click="verify(row)">验证</Button>
                   <Button variant="ghost" size="sm" @click="setDefault(row)">设为默认</Button>
                   <Button variant="ghost" size="sm" @click="openEdit(row)">编辑</Button>
                   <Button variant="ghost" size="sm" @click="remove(row)">删除</Button>
@@ -233,6 +234,14 @@ const submit = async () => {
     ElMessage.error('请填写完整信息')
     return
   }
+  // 保存前做一次实时验证，失败则拦截
+  try {
+    const verifyRes = await store.verifyModel(undefined, undefined, form.value)
+    if (verifyRes?.code !== 200) {
+      ElMessage.error(verifyRes?.message || '验证失败，请检查配置')
+      return
+    }
+  } catch (_) { /* http 已提示 */ }
   if (form.value.id) {
     await store.updateModel(form.value.id, form.value)
   } else {
@@ -246,6 +255,19 @@ const setDefault = async (row) => {
   await store.setDefault(row.id)
   ElMessage.success('已设为默认')
   await refresh()
+}
+
+const verify = async (row) => {
+  try {
+    const res = await store.verifyModel(row.id)
+    if (res?.code === 200) {
+      ElMessage.success('验证通过')
+    } else {
+      ElMessage.error(res?.message || '验证失败')
+    }
+  } catch (e) {
+    // http 封装已弹出错误
+  }
 }
 
 const remove = async (row) => {

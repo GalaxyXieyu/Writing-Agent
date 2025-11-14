@@ -2,6 +2,7 @@ import json
 import re
 import warnings
 from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from templates.ai_templates.content_optimize import content_optimize_prompt
 
@@ -22,7 +23,7 @@ from templates.ai_templates.content_optimize import content_optimize_prompt
 
 def build_optimize_chain(llm: ChatOpenAI):
     """构造优化内容链，外部注入 llm。"""
-    return {"original_text": RunnablePassthrough(), "article_type": RunnablePassthrough(), "user_requirements": RunnablePassthrough()} | content_optimize_prompt | llm
+    return {"original_text": RunnablePassthrough(), "article_type": RunnablePassthrough(), "user_requirements": RunnablePassthrough()} | content_optimize_prompt | llm | StrOutputParser()
 
 # headers = {
 #     "accept": "application/json",

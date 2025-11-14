@@ -64,31 +64,27 @@ async def init_database():
             count = result.scalar()
             
             if count == 0:
-                # 插入测试用户
-                users = [
-                    User(
-                        user_id='admin',
-                        username='admin',
-                        password='admin123',
-                        phone='13800138000',
-                        name='管理员',
-                        create_time=datetime.now(),
-                        status='Y'
-                    ),
-                    User(
-                        user_id='test',
-                        username='test',
-                        password='test123',
-                        phone='13900139000',
-                        name='测试用户',
-                        create_time=datetime.now(),
-                        status='Y'
-                    )
-                ]
-                
-                for user in users:
-                    session.add(user)
-                
+                # 插入测试用户（admin 直接为管理员）
+                admin_user = User(
+                    user_id='admin',
+                    username='admin',
+                    password='admin123',
+                    phone='13800138000',
+                    name='管理员',
+                    create_time=datetime.now(),
+                    status='Y'
+                )
+                setattr(admin_user, 'is_admin', 1)
+                test_user = User(
+                    user_id='test',
+                    username='test',
+                    password='test123',
+                    phone='13900139000',
+                    name='测试用户',
+                    create_time=datetime.now(),
+                    status='Y'
+                )
+                session.add_all([admin_user, test_user])
                 await session.commit()
                 print("测试用户创建成功！")
                 print("\n测试账号信息：")

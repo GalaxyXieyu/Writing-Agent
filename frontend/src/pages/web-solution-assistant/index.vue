@@ -333,14 +333,11 @@
         <Button @click="saveTemplate()">确认</Button>
       </DialogFooter>
     </Dialog>
-  <el-dialog
-      v-model="showTemplateDialog"
-      @close="showTemplateDialog = false"
-      title="全部模板"
-      append-to-body
-      width="80%"
-      class="template-dialog"
-  >
+  <Dialog v-model="showTemplateDialog" className="w-[80vw] max-w-[1200px] max-h-[85vh] p-0 overflow-hidden template-dialog">
+    <DialogHeader class="px-4 py-3 border-b">
+      <DialogTitle>全部模板</DialogTitle>
+    </DialogHeader>
+    <div class="p-4">
       <div class="mb-4 flex items-center gap-4">
         <Input
             v-model="searchTemplateName"
@@ -382,13 +379,14 @@
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
       />
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button variant="outline" @click="canclAllTemplate">取 消</Button>
-          <Button @click="selectOneTemplate">选 定</Button>
-        </div>
-      </template>
-  </el-dialog>
+    </div>
+    <DialogFooter class="px-4 py-3 border-t">
+      <div class="flex justify-end gap-2 w-full">
+        <Button variant="outline" @click="canclAllTemplate">取 消</Button>
+        <Button @click="selectOneTemplate">选 定</Button>
+      </div>
+    </DialogFooter>
+  </Dialog>
 
   <!-- 新版生成自定义模板对话框（shadcn 风格） -->
   <TemplateBuilderDialog
@@ -421,7 +419,10 @@
   </Dialog>
 
 
-  <el-dialog v-model="dialogTableVisible" title="生成自定义模板" width="36%">
+  <Dialog v-model="dialogTableVisible" className="w-[36vw] min-w-[560px] max-w-[720px]">
+    <DialogHeader>
+      <DialogTitle>生成自定义模板</DialogTitle>
+    </DialogHeader>
     <div>
       <el-button-group v-model="isAdd" class="button-container">
         <el-button id="generate-template-btn" label="1000" @click="handleGenerateClick()" class="button-container-button" style="width: 50%;text-align: center;">快速生成模板</el-button>
@@ -508,11 +509,13 @@
       </el-form-item>
 
     </div>
-    <template #footer>
-      <el-button @click="cancelDialog" :disabled="creatingFastTemplate">关 闭</el-button>
-      <el-button type="primary" color="#5571FF" v-if="isFastCreate" @click="submit" :loading="creatingFastTemplate" :disabled="!canFastCreateSubmit">提 交 </el-button>
-    </template>
-  </el-dialog>
+    <DialogFooter>
+      <div class="flex justify-end gap-2 w-full">
+        <Button variant="outline" @click="cancelDialog" :disabled="creatingFastTemplate">关 闭</Button>
+        <Button v-if="isFastCreate" @click="submit" :disabled="!canFastCreateSubmit || creatingFastTemplate">提 交</Button>
+      </div>
+    </DialogFooter>
+  </Dialog>
   <Dialog v-model="centerDialogVisible" className="max-w-md">
     <DialogHeader>
       <DialogTitle>重命名文件</DialogTitle>
@@ -582,6 +585,7 @@ import { ElMessage,ElMessageBox,ElSwitch } from 'element-plus'
 import { useUserStore } from '@/store';
 import ModelSelector from '@/components/ModelSelector.vue'
 import { useModelConfigStore } from '@/store/modules/modelConfig'
+import { solutionSave } from '@/service/api.solution'
 import Card from '@/components/ui/Card.vue';
 import CardHeader from '@/components/ui/CardHeader.vue';
 import CardTitle from '@/components/ui/CardTitle.vue';
@@ -1483,10 +1487,22 @@ const openModelManage = () => {
   // 预留：可跳转到模型管理页，当前项目未配置导航体系，这里先提示
   ElMessage.info('请前往模型配置管理页添加模型（待接入导航）')
 }
-const handleRequestComplete = (content) => {
-    console.log('请求完成，内容：', content);
+const handleRequestComplete = async ({ html, markdown }) => {
     isCreate.value = false
-    // 处理完成逻辑
+    try {
+      const user = useUserStore();
+      const title = templateTitle.value || '未命名文章';
+      const payload = {
+        solution_title: title,
+        solution_content: html || markdown || '',
+        create_phone: user.profile?.mobile || '',
+        create_name: user.profile?.name || ''
+      };
+      await solutionSave(payload);
+      ElMessage.success('已保存到历史');
+    } catch (e) {
+      // 保存失败不阻断主流程
+    }
 };
 
 const handleRequestError = (error) => {
@@ -2004,39 +2020,7 @@ const scrollToId = (id) => {
     overflow: auto !important;
 }
 
-:deep(.el-dialog) {
-  border-radius: 20px;
-  padding: 0 0 16px 0;
-}
-
-:deep(.el-dialog__header) {
-  --el-text-color-primary: #1EFFFF;
-  --el-text-color-regular: #fff;
-  padding: 0 !important;
-  margin: 0 !important;
-  height: 50px;
-  background-color: #F9F9F9;
-  border-bottom: 1px solid #eaeaea;
-  box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.08);
-  /*background-color: #c71717;*/
-  border-top-left-radius: 15px;
-  border-top-right-radius: 15px;
-  box-sizing: border-box;
-}
-:deep(.el-dialog__title) {
-  margin-left: 24px;
-  line-height: 50px;
-  color: black;
-  font-weight: bold;
-}
-
-:deep(.el-dialog__body) {
-  padding: 16px 16px 0 16px;
-}
-
-:deep(.el-dialog__footer) {
-  padding: 16px 16px 0 16px;
-}
+/* 统一使用自研 Dialog 组件，移除 el-dialog 样式覆盖 */
 
 .button-container {
 
@@ -2132,24 +2116,5 @@ const scrollToId = (id) => {
   padding-top: 2rem !important;
 }
 
-/* 修复“全部模板”弹窗在选择后出现的边界溢出与位移问题 */
-:deep(.template-dialog .el-dialog) {
-  /* 去除全局为 .el-dialog 设置的额外内边距，避免宽度计算溢出 */
-  padding: 0 !important;
-  width: 80vw !important;
-  max-width: 1100px;
-  max-height: 80vh;
-  overflow: hidden; /* 禁止外层产生水平/垂直溢出 */
-}
-:deep(.template-dialog .el-dialog__body) {
-  /* 让内容区可滚动，避免撑破弹窗 */
-  max-height: calc(80vh - 120px);
-  overflow: auto;
-  box-sizing: border-box;
-}
-:deep(.template-dialog .el-dialog__footer) {
-  /* 保证底部操作区始终在可视范围内且不挤出边界 */
-  padding: 12px 16px 16px 16px !important;
-  background: var(--background, #fff);
-}
+/* 模板库弹窗滚动策略使用 Dialog 布局，保留其余样式 */
 </style>

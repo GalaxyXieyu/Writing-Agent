@@ -26,5 +26,12 @@ export const modelConfigApi = {
   },
   getDefault(userId) {
     return http({ method: 'GET', url: `${BASE}/default`, params: { user_id: userId } });
+  },
+  verify(modelId, userId, body) {
+    const params = {};
+    if (modelId) params.model_id = modelId;
+    if (userId) params.user_id = userId;
+    // 可选 body：用于新增/编辑前临时验证
+    return http({ method: 'POST', url: `${BASE}/verify`, params, data: body });
   }
 }

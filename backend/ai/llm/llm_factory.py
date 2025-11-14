@@ -29,7 +29,7 @@ class LLMFactory:
             model=cfg.model,
             openai_api_key=cfg.api_key,
             openai_api_base=cfg.base_url,
-            max_tokens=cfg.max_tokens,
+            max_tokens=cfg.max_tokens
         )
 
     @classmethod

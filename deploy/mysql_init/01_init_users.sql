@@ -1,4 +1,5 @@
--- 初始化用户表数据
+-- 强制使用 utf8mb4，避免中文乱码
+SET NAMES utf8mb4;
 -- 默认管理员账号：admin / admin123
 -- 默认测试账号：test / test123
 
@@ -29,12 +30,12 @@ CREATE TABLE IF NOT EXISTS ai_user_token (
   INDEX idx_expire_time (expire_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户Token表';
 
--- 插入初始管理员账号（密码：admin123，未加密）
-INSERT INTO ai_user (user_id, username, password, name, phone, create_time, status)
+-- 说明：将 admin 设为管理员（is_admin=1），test 为普通用户（is_admin=0）
+INSERT INTO ai_user (user_id, username, password, name, phone, create_time, status, is_admin)
 VALUES 
-  ('admin', 'admin', 'admin123', '系统管理员', NULL, NOW(), 'Y'),
-  ('test_user', 'test', 'test123', '测试用户', NULL, NOW(), 'Y')
-ON DUPLICATE KEY UPDATE status = 'Y';
+  ('admin', 'admin', 'admin123', '系统管理员', NULL, NOW(), 'Y', 1),
+  ('test_user', 'test', 'test123', '测试用户', NULL, NOW(), 'Y', 0)
+ON DUPLICATE KEY UPDATE status = 'Y', is_admin = VALUES(is_admin);
 
 -- 创建管理员邀请表（若不存在）
 CREATE TABLE IF NOT EXISTS ai_invite (

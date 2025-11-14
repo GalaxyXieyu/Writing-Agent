@@ -4,7 +4,7 @@ import threading
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from models.solution import (ChapterGenerationRequest, ArticleGenerationRequest, 
-                            GenerationResponse, StreamGenerationResponse)
+                            GenerationResponse, StreamGenerationResponse, AiSolutionSave)
 from models.templates import TemplateContentResponse
 from services.solution import generate_chapter, ChapterGenerationState, generate_article, optimize_content
 from ai.llm.llm_factory import LLMFactory
@@ -15,7 +15,7 @@ from utils.logger import mylog
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from openai import BaseModel
+from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, Integer, Text, Date, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
@@ -33,21 +33,20 @@ sequence_numbers = {}
 # 锁，用于在多线程环境中安全地更新序列号
 sequence_lock = threading.Lock()
 
-# 存储每个IP的最后请求时间
-last_request_time = {}
+# 存储每个IP的请求状态
+request_in_progress = {}
+
 
 def format_sse(data: str, is_end: bool = False) -> str:
+    """SSE 格式包装，兼容前端解析结构"""
     response = StreamGenerationResponse(
         code=200,
         message="内容生成成功" if is_end else None,
         type="success",
         data=data,
-        is_end=is_end
+        is_end=is_end,
     )
     return f"data: {json.dumps(response.dict(), ensure_ascii=False)}\n\n"
-
-# 存储每个IP的请求状态
-request_in_progress = {}
 
 
 @router.post("/generate-chapter")
@@ -90,23 +89,21 @@ async def generate_chapter_api(request: ChapterGenerationRequest, req: Request, 
         background=BackgroundTask(lambda: None)
     )
 
+from sqlalchemy import DateTime
 class Template(Base):
     __tablename__ = 'ai_usually_template'  # 表名
 
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)  # 主键，自动增长
-    user_id = Column(String(255), nullable=False)  # 用户id
-    template_id = Column(String(255), nullable=False)  # 模板id
-    use_template = Column(Text, nullable=True)  # 使用的模板，Text 类型可以存储较长的文本
-    use_count = Column(String(255), nullable=True)  # 使用次数
-    use_time = Column(Date, nullable=True)  # 最近使用时间
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    user_id = Column(String(255), nullable=False)
+    template_id = Column(String(255), nullable=False)
+    use_template = Column(Text, nullable=True)
+    use_count = Column(String(255), nullable=True)
+    use_time = Column(DateTime, nullable=True)
 
 
 async def get_template_record(db, user_id, template_id):
-    """
-    获取用户的模板使用记录
-    """
     stmt = select(Template).filter(
-        Template.user_id == user_id, 
+        Template.user_id == user_id,
         Template.template_id == template_id
     )
     result = await db.execute(stmt)
@@ -215,20 +212,7 @@ async def optimize_content_api(request: dict, req: Request, db: AsyncSession = D
         background=BackgroundTask(lambda: None)
     )
 
-# 定义方案保存信息表的数据模型
-class AiSolutionSave(Base):
-    __tablename__ = 'ai_solution_save'
-    # 定义表的各字段
-    solution_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    solution_title = Column(String(255), nullable=False)
-    solution_content = Column(Text, nullable=False)
-    create_phone = Column(String(255))
-    create_name = Column(String(255))
-    create_date = Column(Date, nullable=False)
-    update_phone = Column(String(255))
-    update_name = Column(String(255))
-    update_date = Column(Date)
-    status_cd = Column(String(255), nullable=False)
+# 统一使用 models.solution.AiSolutionSave，不在路由内重复定义
 
 
 
@@ -264,7 +248,9 @@ async def get_next_sequence_number(db):
     """
     with sequence_lock:
         today = datetime.now().strftime('%Y-%m-%d')
-        stmt = select(AiSolutionSave.solution_id).filter(AiSolutionSave.create_date.between(today + ' 00:00:00', today + ' 23:59:59')).order_by(AiSolutionSave.solution_id.desc())
+        # 直接按 solution_id 前缀过滤；create_date 已为 DATETIME，但为避免字符串 vs 时间比较问题，这里用主键前缀更稳妥
+        prefix = datetime.now().strftime('%Y%m%d')
+        stmt = select(AiSolutionSave.solution_id).filter(AiSolutionSave.solution_id.like(f"{prefix}%")).order_by(AiSolutionSave.solution_id.desc())
         result = await db.execute(stmt)
         max_sequence_query = result.scalars().all()
         if max_sequence_query:
@@ -292,9 +278,10 @@ async def ai_solution_save(save_solution: saveSolution,db: AsyncSession = Depend
             'solution_content': save_solution.solution_content,
             'create_phone': save_solution.create_phone,
             'create_name': save_solution.create_name,
-            'create_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'create_date': datetime.now(),
             'status_cd': 'Y'
         }
+        mylog.info(f"[solutionSave] solution_id={solution_id}, seq={sequence_number}, title={save_solution.solution_title!r}")
         # 创建一个新的AiSolutionSave实例
         new_solution = AiSolutionSave(**solution_data)
 
@@ -308,7 +295,11 @@ async def ai_solution_save(save_solution: saveSolution,db: AsyncSession = Depend
                 {"code": 200, "message": f"解决方案信息保存成功", "type": "success"})
         )
     except SQLAlchemyError as e:
-        print(f"An error occurred: {e}")
+        mylog.exception(f"[solutionSave] DB error: {e}")
+        try:
+            mylog.error(f"[solutionSave] payload={json.dumps(solution_data, ensure_ascii=False)}")
+        except Exception:
+            pass
         return JSONResponse(
             status_code=500,
             content=jsonable_encoder(
@@ -454,3 +445,35 @@ async def update_solution(update_solution: updateSolution,db: AsyncSession = Dep
         content=jsonable_encoder(
             {"code": 200, "message": f"方案信息更新成功", "type": "success"})
     )
+
+
+class GetSolutionRequest(BaseModel):
+    solution_id: str
+
+
+@router.post("/getSolution")
+async def get_solution(req: GetSolutionRequest, db: AsyncSession = Depends(get_async_db)):
+    try:
+        stmt = select(AiSolutionSave).where(AiSolutionSave.solution_id == req.solution_id)
+        result = await db.execute(stmt)
+        sol = result.scalar_one_or_none()
+        if not sol:
+            return JSONResponse(status_code=200, content=jsonable_encoder({
+                "code": 404, "message": "未找到记录", "type": "error", "data": None
+            }))
+        data = {
+            "solution_id": sol.solution_id,
+            "solution_title": sol.solution_title,
+            "solution_content": sol.solution_content,
+            "create_phone": sol.create_phone,
+            "create_name": sol.create_name,
+            "create_date": str(sol.create_date),
+            "status_cd": sol.status_cd
+        }
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 200, "message": "查询成功", "type": "success", "data": data
+        }))
+    except Exception as e:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 500, "message": f"查询失败: {str(e)}", "type": "error", "data": None
+        }))

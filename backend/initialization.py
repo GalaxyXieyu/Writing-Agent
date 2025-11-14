@@ -126,6 +126,53 @@ async def migrate_database(engine):
             else:
                 mylog.info("ai_create_template.example_output 列已存在，跳过迁移")
                 
+            # 3) 调整 ai_solution_save 表结构：solution_id -> VARCHAR(20)，日期列为 DATETIME
+            try:
+                result = await session.execute(
+                    text("""
+                        SELECT DATA_TYPE, COLUMN_NAME 
+                        FROM information_schema.COLUMNS 
+                        WHERE TABLE_SCHEMA = DATABASE() 
+                        AND TABLE_NAME = 'ai_solution_save'
+                    """)
+                )
+                rows = result.fetchall()
+                if rows:
+                    cols = {row[1]: row[0] for row in rows}
+                    # solution_id: 若不是 varchar，则修改
+                    if 'solution_id' in cols and cols['solution_id'].lower() not in ('varchar', 'char', 'text'):
+                        mylog.info("修改 ai_solution_save.solution_id 为 VARCHAR(20)...")
+                        await session.execute(
+                            text("""
+                                ALTER TABLE ai_solution_save 
+                                MODIFY COLUMN solution_id VARCHAR(20) NOT NULL COMMENT '方案ID'
+                            """)
+                        )
+                    # create_date -> DATETIME NOT NULL
+                    if 'create_date' in cols and cols['create_date'].lower() != 'datetime':
+                        mylog.info("修改 ai_solution_save.create_date 为 DATETIME...")
+                        await session.execute(
+                            text("""
+                                ALTER TABLE ai_solution_save 
+                                MODIFY COLUMN create_date DATETIME NOT NULL COMMENT '创建时间'
+                            """)
+                        )
+                    # update_date -> DATETIME NULL
+                    if 'update_date' in cols and cols['update_date'].lower() != 'datetime':
+                        mylog.info("修改 ai_solution_save.update_date 为 DATETIME...")
+                        await session.execute(
+                            text("""
+                                ALTER TABLE ai_solution_save 
+                                MODIFY COLUMN update_date DATETIME NULL COMMENT '更新时间'
+                            """)
+                        )
+                    await session.commit()
+                else:
+                    mylog.info("表 ai_solution_save 不存在或无列信息，跳过结构调整")
+            except Exception as e:
+                mylog.error(f"调整 ai_solution_save 表结构失败: {e}")
+                await session.rollback()
+
         except Exception as e:
             mylog.error(f"数据库迁移失败: {str(e)}")
             # 不抛出异常，避免影响应用启动

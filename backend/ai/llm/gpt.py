@@ -1,8 +1,14 @@
-from langchain_openai import ChatOpenAI
+"""
+已移除的硬编码 LLM 定义。
 
-gpt = ChatOpenAI(
-    temperature=0.2,
-    model="gpt-4o-eus2",
-    openai_api_key="sk-ZFEd6Am3xCHJZB5BAd2bAa7c2fB749Eb86Ba807dC3D3D192",
-    openai_api_base="http://127.0.0.1:13000/v1"
-)
+请改用基于数据库模型配置的工厂：ai.llm.llm_factory.LLMFactory
+
+示例：
+    from ai.llm.llm_factory import LLMFactory
+    llm = await LLMFactory.get_default_llm(db, user_id)
+"""
+
+def get_llm(*_, **__):
+    raise RuntimeError(
+        "ai.llm.gpt 已废弃：请使用 ai.llm.llm_factory.LLMFactory 从数据库配置创建 LLM。"
+    )

@@ -24,6 +24,7 @@
             <td class="py-2">{{ u.phone }}</td>
             <td class="py-2">{{ u.status }}</td>
             <td class="py-2 space-x-2">
+              <Button size="sm" variant="ghost" @click="viewRecords(u)">查看记录</Button>
               <Button size="sm" @click="resetPwd(u)">重置密码</Button>
               <Button size="sm" variant="outline" @click="toggleStatus(u)">{{ u.status === 'Y' ? '停用' : '启用' }}</Button>
             </td>
@@ -37,6 +38,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import Input from '@/components/ui/Input.vue';
 import Button from '@/components/ui/Button.vue';
@@ -44,6 +46,7 @@ import { useUserStore } from '@/store';
 import { adminListUsers, adminCreateInvite, adminResetPassword, adminSetStatus } from '@/service/api.admin';
 
 const userStore = useUserStore();
+const router = useRouter();
 const kw = ref('');
 const list = ref([]);
 const total = ref(0);
@@ -76,6 +79,18 @@ const toggleStatus = async (u) => {
   const next = u.status === 'Y' ? 'N' : 'Y';
   const res = await adminSetStatus({ user_id: u.user_id, status: next });
   if (res.code === 200) { ElMessage.success('已更新'); load(); }
+};
+
+const viewRecords = (u) => {
+  // 跳转到成员记录页，携带 user_id 与 phone，后端优先用手机号过滤更稳妥
+  router.push({
+    path: '/admin/records',
+    query: {
+      member_user_id: u.user_id,
+      member_phone: u.phone || '',
+      member_name: u.name || u.username
+    }
+  });
 };
 
 onMounted(load);

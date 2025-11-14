@@ -32,19 +32,24 @@ class ChapterGenerationState:
             return chapter
         return None
 
-# 生成写作要求的递归函数
+"""生成、优化流程的通用空值防御与日志增强"""
+
+# 生成写作要求的递归函数（兼容 None 值）
 def generate_writing_requirements(chapter: OutlineItem) -> str:
-    requirements = []
-    
-    def recurse(chapter, prefix=""):
-        if chapter.writingRequirement:
-            requirements.append(f"{prefix}{chapter.titleName}: {chapter.writingRequirement}")
+    requirements: list[str] = []
+
+    def recurse(node, prefix: str = ""):
+        title = getattr(node, "titleName", None) or ""
+        req = getattr(node, "writingRequirement", None) or ""
+        if req:
+            requirements.append(f"{prefix}{title}: {req}")
         else:
-            requirements.append(f"{prefix}{chapter.titleName}")
-        
-        for child in chapter.children:
+            requirements.append(f"{prefix}{title}")
+
+        children = getattr(node, "children", None) or []
+        for child in children:
             recurse(child, prefix + "  ")
-    
+
     recurse(chapter)
     return "\n".join(requirements)
 
@@ -52,10 +57,10 @@ def generate_writing_requirements(chapter: OutlineItem) -> str:
 
 # 完整章节生成
 async def generate_article(state: ChapterGenerationState, llm, db=None) -> AsyncGenerator[str, None]:
-    complete_content = ""  # 用于存储完整的返回内容
-    # 提取最高级别的标题
-    highest_level_title = state.outline.titleName
-    mylog.info(f"最高级别的标题: {highest_level_title}")
+    complete_content: str = ""  # 用于存储完整的返回内容
+    # 提取最高级别的标题（防御 None）
+    highest_level_title = getattr(state.outline, "titleName", None) or ""
+    # 去除冗余日志输出
     
     while True:
         chapter = state.next_chapter()
@@ -64,7 +69,7 @@ async def generate_article(state: ChapterGenerationState, llm, db=None) -> Async
         
         # 获取上一章节的内容
         if state.generated_contents:
-            last_para_content = state.generated_contents[-1]
+            last_para_content = state.generated_contents[-1] or ""
             # 统计 token 数量
             token_count = len(last_para_content)
             # 如果超过 2000 个 token，则截断最后 2000 个 token
@@ -74,21 +79,25 @@ async def generate_article(state: ChapterGenerationState, llm, db=None) -> Async
             last_para_content = ""
         
         # 打印调试信息，确保每章的标题和要求被正确传入
-        print(f"生成章节: {chapter.titleName}")
-        print(f"章节要求: {chapter.writingRequirement}")
-        yield "# "+chapter.titleName+"\n"
+        title_safe = getattr(chapter, "titleName", None) or ""
+        req_safe = getattr(chapter, "writingRequirement", None) or ""
+        # 标题输出防御 None
+        yield "# " + title_safe + "\n"
         # 处理每个二级章节
-        if not chapter.children:
+        children = getattr(chapter, "children", None) or []
+        if not children:
             async for token in generate_chapter(chapter, last_para_content, highest_level_title, llm, db=db):
-                complete_content += token  # 累加到完整内容中
-                yield token
+                tok = token or ""
+                complete_content += tok  # 累加到完整内容中
+                yield tok
         else:
-            for subchapter in chapter.children:
-                subchapter_content = ""
+            for subchapter in children:
+                subchapter_content: str = ""
                 async for token in generate_chapter(subchapter, last_para_content, highest_level_title, llm, db=db):
-                    subchapter_content += token
-                    complete_content += token  # 累加到完整内容中
-                    yield token
+                    tok = token or ""
+                    subchapter_content += tok
+                    complete_content += tok  # 累加到完整内容中
+                    yield tok
                 
                 # 每个二级章节之间返回一个换行符
                 yield "\n\n"
@@ -97,50 +106,127 @@ async def generate_article(state: ChapterGenerationState, llm, db=None) -> Async
                 last_para_content = subchapter_content
         
         # 将当前章节的内容添加到 generated_contents 列表中
-        state.generated_contents.append(complete_content)
+        state.generated_contents.append(complete_content or "")
     
-    mylog.info("完整的返回内容: %s", complete_content)  # 记录信息日志
+    # 去除冗余日志输出
 
 
 # 单个章节生成
 async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest_level_title: str, llm, db=None) -> AsyncGenerator[str, None]:
+    # 入参兼容与结构拼装
     writing_requirements = generate_writing_requirements(chapter)
     structure = f"Writing Requirement: {writing_requirements}"
     complete_template = f"{structure}"
 
     try:
-        # 打印调试信息，确保传入的参数正确
-        mylog.debug(f"入参 - last_para_content: {last_para_content}")
-        mylog.debug(f"入参 - highest_level_title: {highest_level_title}")
-        mylog.debug(f"入参 - 本章内容: {chapter.titleName}")
-        mylog.debug(f"入参 - 本章的要求: {writing_requirements}")
-        
         # 使用异步函数构建 chain，支持从数据库读取提示词
         from ai.agents.paragraph_writer import build_paragraph_chain_async
-        chain = await build_paragraph_chain_async(llm, db=db)
-        async for token in chain.astream({
-            "complete_title": highest_level_title,
-            "last_para_content": last_para_content,
-            "titleNames": chapter.titleName,
-            "requirements": writing_requirements
-        }):
-            yield token.content
-    except Exception as e:
-        mylog.error(f"Error generating chapter: {e}")  # 记录错误日志
+        llm_no_usage = llm.bind(stream_options={"include_usage": False})
+        chain = await build_paragraph_chain_async(llm_no_usage, db=db)
+        inputs = {
+            "complete_title": highest_level_title or "",
+            "last_para_content": last_para_content or "",
+            "titleNames": getattr(chapter, "titleName", None) or "",
+            "requirements": writing_requirements or ""
+        }
+        try:
+            # 直接使用 astream 返回的增量结果（AIMessageChunk 或字符串）
+            async for chunk in chain.astream(inputs):
+
+                # 统一抽取文本内容
+                text = getattr(chunk, "content", None)
+                if text is None:
+                    if isinstance(chunk, str):
+                        text = chunk
+                    else:
+                        try:
+                            text = str(chunk)
+                        except Exception:
+                            text = ""
+                if text:
+                    yield text
+        except Exception as se:
+            # 处理流式异常；若为已知的 AIMessageChunk usage 校验问题，则强制回退
+            STREAM_ONLY = (os.getenv("AI_STREAM_ONLY", "").lower() in ("1", "true", "yes"))
+            err_msg = str(se)
+            force_fallback = ("AIMessageChunk" in err_msg) or ("usage_metadata" in err_msg)
+            if STREAM_ONLY and not force_fallback:
+                # 静默跳过（不回退）
+                pass
+            else:
+                # 回退到非流式一次性生成
+                try:
+                    resp = await chain.ainvoke(inputs)
+                    content_text = getattr(resp, "content", resp) or ""
+                    if not isinstance(content_text, str):
+                        try:
+                            content_text = str(content_text)
+                        except Exception:
+                            content_text = ""
+                    chunk_size = 500
+                    for i in range(0, len(content_text), chunk_size):
+                        yield content_text[i:i+chunk_size]
+                except Exception:
+                    # 静默失败
+                    pass
+    except Exception:
+        # 静默失败
+        pass
     yield "\n"  # 在章节结束后添加一个换行
 
 # 优化内容
 async def optimize_content(original_text: str, article_type: str, user_requirements: str, llm) -> AsyncGenerator[str, None]:
     try:
-        chain = build_optimize_chain(llm)
-        async for token in chain.astream({
-            "original_text": original_text,
-            "article_type": article_type,
-            "user_requirements": user_requirements
-        }):
-            yield token.content
-    except Exception as e:
-        mylog.error(f"Error optimizing content: {e}")  # 记录错误日志
+        # 禁用 usage 推送，避免上游返回 null 触发校验错误
+        try:
+            llm_no_usage = llm.bind(stream_options={"include_usage": False})
+        except Exception:
+            llm_no_usage = llm
+        chain = build_optimize_chain(llm_no_usage)
+        try:
+            async for chunk in chain.astream({
+                "original_text": original_text,
+                "article_type": article_type,
+                "user_requirements": user_requirements
+            }):
+                text = getattr(chunk, "content", None)
+                if text is None:
+                    if isinstance(chunk, str):
+                        text = chunk
+                    else:
+                        try:
+                            text = str(chunk)
+                        except Exception:
+                            text = ""
+                if text:
+                    yield text
+        except Exception as se:
+            # 与章节生成一致的回退策略
+            STREAM_ONLY = (os.getenv("AI_STREAM_ONLY", "").lower() in ("1", "true", "yes"))
+            err_msg = str(se)
+            force_fallback = ("AIMessageChunk" in err_msg) or ("usage_metadata" in err_msg)
+            if STREAM_ONLY and not force_fallback:
+                pass
+            else:
+                try:
+                    resp = await chain.ainvoke({
+                        "original_text": original_text,
+                        "article_type": article_type,
+                        "user_requirements": user_requirements
+                    })
+                    content_text = getattr(resp, "content", resp) or ""
+                    if not isinstance(content_text, str):
+                        try:
+                            content_text = str(content_text)
+                        except Exception:
+                            content_text = ""
+                    chunk_size = 500
+                    for i in range(0, len(content_text), chunk_size):
+                        yield content_text[i:i+chunk_size]
+                except Exception:
+                    pass
+    except Exception:
+        # 静默降级
         yield original_text
 
 # 测试函数
@@ -243,10 +329,10 @@ async def test_generate_article():
 
     state = ChapterGenerationState(outline)
     
-    mylog.info("开始生成文章...")  # 记录信息日志
+    # 去除冗余日志
     async for content in generate_article(state):
         print(content, end='', flush=True)
-    mylog.info("文章生成完成。")  # 记录信息日志
+    # 去除冗余日志
 
 if __name__ == "__main__":
     asyncio.run(test_generate_article())

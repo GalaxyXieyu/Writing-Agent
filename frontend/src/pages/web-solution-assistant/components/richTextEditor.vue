@@ -2,45 +2,28 @@
     <div class="editor-container h-full flex flex-col relative">
         <div class="flex-1 relative h-full w-full" ref="editorContainerRef" v-loading="loading" element-loading-text="生成中..."></div>
         
-        <el-dialog
-            id="ai-dialog"
-            v-model="dialogVisible"
-            :close-on-click-modal="false"
-            :modal="false"
-            :style="dialogStyle"
-            class="ai-dialog"
-            title="Ai智能助手"
-            width="40%"
-        >
+        <Dialog v-model="dialogVisible" :closeOnOverlay="true" className="w-[40vw] max-w-[760px] p-0" :style="dialogStyle">
+          <DialogHeader class="px-4 py-3">
+            <DialogTitle>AI 智能助手</DialogTitle>
+          </DialogHeader>
+          <div class="px-4 pb-3">
             <div ref="contentRef" class="dialog-content" v-html="aiContentHtml"></div>
-            <template #footer>
-                <div class="dialog-footer">
-                    <span v-show="isCreateText" style="float: left">创作中...</span>
-                    <el-button @click="handleWritingClick">重新写作</el-button>
-                    <el-button @click="handleInsertClick">插入后方</el-button>
-                    <el-button type="primary" @click="handleReplaceClick">
-                        替换所选
-                    </el-button>
-                </div>
-                <el-divider style="margin: 10px 0"/>
-                <div class="input-area">
-                    <el-input
-                        v-model="aiInputContent"
-                        placeholder="请输入优化建议"
-                        style="height: 36px"
-                        type="text"
-                    >
-                        <template #suffix>
-                            <el-button circle size="small" type="primary" @click="handleAiInputClick">
-                                <el-icon>
-                                    <Top/>
-                                </el-icon>
-                            </el-button>
-                        </template>
-                    </el-input>
-                </div>
-            </template>
-        </el-dialog>
+            <div class="flex items-center gap-2 mt-3">
+              <Input v-model="aiInputContent" placeholder="请输入优化建议" />
+              <Button size="sm" @click="handleAiInputClick">发送</Button>
+            </div>
+          </div>
+          <DialogFooter class="px-4 py-3 border-t">
+            <div class="flex items-center justify-between w-full">
+              <span v-show="isCreateText" class="text-sm text-muted-foreground">创作中...</span>
+              <div class="flex gap-2">
+                <Button variant="outline" @click="handleWritingClick">重新写作</Button>
+                <Button variant="outline" @click="handleInsertClick">插入后方</Button>
+                <Button @click="handleReplaceClick">替换所选</Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </Dialog>
     </div>
 </template>
 
@@ -51,12 +34,17 @@ import "aieditor/dist/style.css";
 import {marked} from 'marked';
 import {fetchEventSource} from "@microsoft/fetch-event-source";
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Top} from '@element-plus/icons-vue'
 import {getKnowToWriteUrl, createArticleUrl} from '@/service/api.solution'
 import {useModelConfigStore} from '@/store/modules/modelConfig'
 import {asBlob} from 'html-docx-js-typescript';
 import {saveAs} from 'file-saver';
 import interact from 'interactjs'
+import Dialog from '@/components/ui/Dialog.vue'
+import DialogHeader from '@/components/ui/DialogHeader.vue'
+import DialogTitle from '@/components/ui/DialogTitle.vue'
+import DialogFooter from '@/components/ui/DialogFooter.vue'
+import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 
 const props = defineProps({
     templateTitle: String
@@ -74,44 +62,78 @@ const aiContentHtml = ref('');
 const isCreateText = ref(false);
 const isPause = ref(false);
 const isCreate = ref(false);
+// 生成时自动跟随滚动到底部
+const autoFollowScroll = ref(true);
 const loading = ref(false);
 let ctrl;
 let isCooldown = false;
 let lastType = 1;
+// 流式渲染节流，避免高频刷新导致卡顿
+let renderTimer = null;
+let renderScheduled = false;
+let fullMarkdown = '';
+
+const scheduleRender = (immediate = false) => {
+    const doRender = () => {
+        try {
+            const htmlContent = marked(fullMarkdown);
+            content.value = htmlContent;
+            if (aiEditor) {
+                if (aiEditor.setHtml) {
+                    aiEditor.setHtml(htmlContent);
+                } else if (aiEditor.setContent) {
+                    aiEditor.setContent(htmlContent);
+                }
+            }
+            if (autoFollowScroll.value) {
+                requestAnimationFrame(() => {
+                    try {
+                        // 优先用 AiEditor 内置的聚焦到末尾（会自动把光标滚动到视口）
+                        if (aiEditor && typeof aiEditor.focusEnd === 'function') {
+                            aiEditor.focusEnd();
+                            return;
+                        }
+                    } catch {}
+                    try {
+                        // 兜底：直接滚动容器到底部
+                        const candidates = [
+                            editorContainerRef.value,
+                            editorContainerRef.value?.querySelector('.ai-editor'),
+                            editorContainerRef.value?.querySelector('.aieditor-content'),
+                            editorContainerRef.value?.querySelector('.ProseMirror'),
+                            editorContainerRef.value?.firstElementChild,
+                        ].filter(Boolean);
+                        for (const el of candidates) {
+                            if (el && el.scrollHeight > el.clientHeight) {
+                                el.scrollTop = el.scrollHeight;
+                                const last = el.lastElementChild;
+                                if (last && last.scrollIntoView) last.scrollIntoView({ block: 'end' });
+                                break;
+                            }
+                        }
+                    } catch {}
+                });
+            }
+        } catch (e) {
+            console.error('流式渲染失败:', e);
+        } finally {
+            renderScheduled = false;
+            renderTimer = null;
+        }
+    };
+    if (immediate) {
+        if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+        doRender();
+    } else if (!renderScheduled) {
+        renderScheduled = true;
+        renderTimer = setTimeout(doRender, 120);
+    }
+};
 
 const emit = defineEmits(['requestComplete', 'requestError']);
 
-const getAiEditorConfig = () => {
-    const env = import.meta.env;
-    const aiConfig = {};
-    
-    if (env.VITE_AI_EDITOR_ENABLED === 'true') {
-        const models = {};
-        
-        if (env.VITE_AI_OPENAI_API_KEY) {
-            models.openai = {
-                apiKey: env.VITE_AI_OPENAI_API_KEY,
-                model: env.VITE_AI_OPENAI_MODEL || 'gpt-4o-mini',
-                baseURL: env.VITE_AI_OPENAI_BASE_URL || undefined
-            };
-        }
-        
-        if (env.VITE_AI_SPARK_APP_ID && env.VITE_AI_SPARK_API_KEY && env.VITE_AI_SPARK_API_SECRET) {
-            models.spark = {
-                appId: env.VITE_AI_SPARK_APP_ID,
-                apiKey: env.VITE_AI_SPARK_API_KEY,
-                apiSecret: env.VITE_AI_SPARK_API_SECRET,
-                version: env.VITE_AI_SPARK_VERSION || 'v3.5'
-            };
-        }
-        
-        if (Object.keys(models).length > 0) {
-            aiConfig.models = models;
-        }
-    }
-    
-    return Object.keys(aiConfig).length > 0 ? aiConfig : null;
-};
+// 明确关闭 AiEditor 内置 AI（避免其要求 bubblePanelModel 等配置）
+const getAiEditorConfig = () => false;
 
 onMounted(() => {
     nextTick(() => {
@@ -126,7 +148,8 @@ onMounted(() => {
                         content.value = editor.getHtml();
                     }
                 },
-                ...(aiConfig ? { ai: aiConfig } : {})
+                // 显式传递 ai:false 关闭内置 AI，避免控制台反复报 model name 错误
+                ai: aiConfig === false ? false : aiConfig
             });
             
             if (editorContainerRef.value) {
@@ -147,25 +170,7 @@ onMounted(() => {
         }
     });
 
-    interact('.el-dialog')
-        .draggable({
-            allowFrom: '.el-dialog__header',
-            modifiers: [
-                interact.modifiers.restrictRect({
-                    restriction: 'parent'
-                })
-            ],
-            listeners: {
-                move(event) {
-                    const target = event.target
-                    const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
-                    const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
-                    target.style.transform = `translate(${x}px, ${y}px)`
-                    target.setAttribute('data-x', x)
-                    target.setAttribute('data-y', y)
-                }
-            }
-        })
+    // 去除基于 .el-dialog 的拖拽逻辑；如需拖拽可后续为 Dialog 增加 handle
 });
 
 const getSelectionCoords = () => {
@@ -394,6 +399,9 @@ const createArticle = (templateTitleParam1) => {
         }
     }
     content.value = '';
+    fullMarkdown = '';
+    if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+    renderScheduled = false;
     loading.value = true;
     isCreate.value = true;
     const chatPayload = {
@@ -403,8 +411,7 @@ const createArticle = (templateTitleParam1) => {
             'Content-Type': 'application/json',
         },
     };
-    let aiContent1 = "";
-    let aiValue = "";
+    // 攒批渲染：将增量写入 fullMarkdown，由 scheduleRender 合并更新
     fetchEventSource(createArticleUrl, {
         openWhenHidden: true,
         signal: ctrl.signal,
@@ -419,29 +426,15 @@ const createArticle = (templateTitleParam1) => {
                 return;
             }
             loading.value = false;
-            if (JSON.parse(event.data).is_end === true) {
-                console.log('Stream ended');
+            const parsed = JSON.parse(event.data);
+            if (parsed.is_end === true) {
+                // 流结束，立即做一次最终渲染
+                scheduleRender(true);
                 return;
             }
-            let eventData = JSON.parse(event.data).data;
-            if (eventData === '\n') {
-                aiContent1 += aiValue + '\n';
-            }
-            aiValue = eventData;
-            aiContent1 += eventData;
-            const htmlContent = marked(aiContent1);
-            content.value = htmlContent;
-            if (aiEditor) {
-                try {
-                    if (aiEditor.setHtml) {
-                        aiEditor.setHtml(htmlContent);
-                    } else if (aiEditor.setContent) {
-                        aiEditor.setContent(htmlContent);
-                    }
-                } catch (e) {
-                    console.error('更新编辑器内容失败:', e);
-                }
-            }
+            const eventData = parsed.data || '';
+            fullMarkdown += eventData;
+            scheduleRender(false);
         },
         onclose() {
             loading.value = false;
@@ -450,11 +443,13 @@ const createArticle = (templateTitleParam1) => {
                 message: '创作完成.',
                 type: 'success',
             });
-            emit('requestComplete', true);
+            emit('requestComplete', { html: content.value, markdown: fullMarkdown });
         },
         onerror(err) {
             loading.value = false;
             isCreate.value = false;
+            if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+            renderScheduled = false;
             emit('requestError', err);
             throw err;
         },
@@ -536,7 +531,24 @@ onBeforeUnmount(() => {
 defineExpose({
     createArticle,
     isPause,
-    isCreate
+    isCreate,
+    // 手动设置 HTML，供详情页直接注入内容
+    setHtml: (html) => {
+        try {
+            if (aiEditor && aiEditor.setHtml) {
+                aiEditor.setHtml(html || '');
+            } else if (aiEditor && aiEditor.setContent) {
+                aiEditor.setContent(html || '');
+            } else if (editorContainerRef.value) {
+                const editorElement = editorContainerRef.value.querySelector('.ai-editor');
+                if (editorElement) editorElement.innerHTML = html || '';
+            }
+        } catch (e) {
+            console.error('setHtml 调用失败:', e);
+        }
+    },
+    // 允许外部打开/关闭自动跟随
+    setAutoFollow: (val) => { autoFollowScroll.value = !!val; }
 });
 </script>
 

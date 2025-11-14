@@ -8,6 +8,9 @@
         <option value="file">文件</option>
       </select>
       <Button @click="load">查询</Button>
+      <div class="text-sm text-muted-foreground" v-if="memberName">
+        当前成员：{{ memberName }}
+      </div>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
@@ -18,6 +21,7 @@
             <th class="py-2">成员手机号</th>
             <th class="py-2">成员姓名</th>
             <th class="py-2">时间</th>
+            <th class="py-2 text-right">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -27,6 +31,9 @@
             <td class="py-2">{{ r.owner_phone }}</td>
             <td class="py-2">{{ r.owner_name }}</td>
             <td class="py-2">{{ r.created_at }}</td>
+            <td class="py-2 text-right">
+              <Button size="sm" variant="ghost" @click="view(r)" v-if="r.type === 'solution'">查看</Button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -37,26 +44,45 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import Input from '@/components/ui/Input.vue';
 import Button from '@/components/ui/Button.vue';
 import { useUserStore } from '@/store';
 import { adminListRecords } from '@/service/api.admin';
 
 const userStore = useUserStore();
+const route = useRoute();
 const kw = ref('');
 const type = ref('');
 const list = ref([]);
 const total = ref(0);
+const memberUserId = ref('');
+const memberName = ref('');
+const router = useRouter();
 
 const load = async () => {
-  const res = await adminListRecords({ kw: kw.value, type: type.value });
+  const params = { kw: kw.value, type: type.value };
+  if (memberUserId.value) params.member_user_id = memberUserId.value;
+  // 若路由带了手机号，显式传给后端，避免因 user_id 解析失败而查不到
+  if (route.query.member_phone) params.member_phone = String(route.query.member_phone);
+  const res = await adminListRecords(params);
   if (res.code === 200) {
     list.value = res.data?.list || [];
     total.value = res.data?.total || 0;
   }
 };
 
-onMounted(load);
+onMounted(() => {
+  // 从路由参数读取成员ID与名称
+  memberUserId.value = route.query.member_user_id || '';
+  memberName.value = route.query.member_name || '';
+  load();
+});
+
+const view = (row) => {
+  // 跳到通用历史详情页，沿用现有组件
+  router.push({ path: '/history/detail', query: { id: row.id } });
+};
 </script>
 
 <style scoped>

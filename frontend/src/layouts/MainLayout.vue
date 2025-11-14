@@ -93,14 +93,27 @@
     <!-- 管理入口：仅管理员可见 -->
     <SidebarMenuItem v-if="userStore?.profile?.is_admin">
       <SidebarMenuButton
-        :isActive="activeSidebarMenu === 'admin-members' || activeSidebarMenu === 'admin-records'"
+        :isActive="activeSidebarMenu === 'admin-members'"
         @click="handleSidebarSelect('admin-members')"
       >
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A4 4 0 018 16h8a4 4 0 012.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         <template #text>
-          <span>管理</span>
+          <span>成员管理</span>
+        </template>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+    <SidebarMenuItem v-if="userStore?.profile?.is_admin">
+      <SidebarMenuButton
+        :isActive="activeSidebarMenu === 'admin-records'"
+        @click="handleSidebarSelect('admin-records')"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <template #text>
+          <span>成员记录</span>
         </template>
       </SidebarMenuButton>
     </SidebarMenuItem>

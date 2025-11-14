@@ -162,26 +162,55 @@ async def list_records(db: AsyncSession = Depends(get_async_db), authorization: 
             conds.append(col <= text(f"'{time_to} 23:59:59'"))
         return conds
 
-    # 成员手机号解析
+    # 成员解析：兼容历史数据中 create_phone/create_no 可能存 user_id 的情况
     target_phone = member_phone
-    if not target_phone and member_user_id:
-        # 查成员手机号
+    member_user = None
+    if member_user_id:
         res = await db.execute(select(User).where(User.user_id == member_user_id, User.parent_admin_id == admin.user_id))
-        mu = res.scalar_one_or_none()
-        target_phone = mu.phone if mu else None
+        member_user = res.scalar_one_or_none()
+        if not target_phone:
+            target_phone = member_user.phone if member_user else None
+    elif target_phone:
+        res = await db.execute(select(User).where(User.phone == target_phone, User.parent_admin_id == admin.user_id))
+        member_user = res.scalar_one_or_none()
+
+    # 针对单个成员时的可匹配标识（手机号 + user_id + 兜底用户名）
+    def member_allowed_idents(u: User):
+        if not u:
+            return []
+        cands = []
+        if getattr(u, 'phone', None):
+            cands.append(u.phone)
+        if getattr(u, 'user_id', None):
+            cands.append(u.user_id)
+        if getattr(u, 'username', None):
+            cands.append(u.username)
+        # 去重并过滤空
+        return [x for i, x in enumerate(cands) if x and cands.index(x) == i]
 
     # 查询 Solution
     if type in (None, '', 'solution'):
         stmt = select(AiSolutionSave).where(AiSolutionSave.status_cd == 'Y')
-        # 限制在当前管理员成员范围
-        if target_phone:
-            stmt = stmt.where(AiSolutionSave.create_phone == target_phone)
+        # 限制在当前管理员成员范围（同时兼容 create_phone 存为 user_id 的历史数据）
+        if member_user:
+            idents = member_allowed_idents(member_user)
+            if idents:
+                stmt = stmt.where(AiSolutionSave.create_phone.in_(idents))
+            else:
+                stmt = stmt.where(text('1=0'))
         else:
-            # 所有成员手机号集合
-            res = await db.execute(select(User.phone).where(User.parent_admin_id == admin.user_id))
-            phones = [r[0] for r in res.fetchall() if r[0]]
-            if phones:
-                stmt = stmt.where(AiSolutionSave.create_phone.in_(phones))
+            # 聚合当前管理员下所有成员的可匹配标识
+            res = await db.execute(select(User.user_id, User.phone, User.username).where(User.parent_admin_id == admin.user_id))
+            rows = res.fetchall()
+            idents = []
+            for uid, phone, username in rows:
+                if phone: idents.append(phone)
+                if uid: idents.append(uid)
+                if username: idents.append(username)
+            # 去重
+            idents = list(dict.fromkeys([x for x in idents if x]))
+            if idents:
+                stmt = stmt.where(AiSolutionSave.create_phone.in_(idents))
             else:
                 stmt = stmt.where(text('1=0'))
         if kw:
@@ -203,14 +232,24 @@ async def list_records(db: AsyncSession = Depends(get_async_db), authorization: 
     # 查询 File
     if type in (None, '', 'file'):
         stmt = select(AiFileRel).where(AiFileRel.status_cd != '-1')
-        # 限制范围
-        if target_phone:
-            stmt = stmt.where(AiFileRel.create_no == target_phone)
+        # 限制范围（兼容 create_no 为 user_id 的历史数据）
+        if member_user:
+            idents = member_allowed_idents(member_user)
+            if idents:
+                stmt = stmt.where(AiFileRel.create_no.in_(idents))
+            else:
+                stmt = stmt.where(text('1=0'))
         else:
-            res = await db.execute(select(User.phone).where(User.parent_admin_id == admin.user_id))
-            phones = [r[0] for r in res.fetchall() if r[0]]
-            if phones:
-                stmt = stmt.where(AiFileRel.create_no.in_(phones))
+            res = await db.execute(select(User.user_id, User.phone, User.username).where(User.parent_admin_id == admin.user_id))
+            rows = res.fetchall()
+            idents = []
+            for uid, phone, username in rows:
+                if phone: idents.append(phone)
+                if uid: idents.append(uid)
+                if username: idents.append(username)
+            idents = list(dict.fromkeys([x for x in idents if x]))
+            if idents:
+                stmt = stmt.where(AiFileRel.create_no.in_(idents))
             else:
                 stmt = stmt.where(text('1=0'))
         if kw:
