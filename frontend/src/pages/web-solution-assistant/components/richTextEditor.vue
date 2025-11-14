@@ -48,7 +48,13 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 
 const props = defineProps({
-    templateTitle: String
+    // 页面标题，仅用于导出命名
+    templateTitle: String,
+    // 初始 HTML 内容（例如历史详情页回显）
+    initialHtml: {
+        type: String,
+        default: ''
+    }
 });
 
 const editorContainerRef = ref(null);
@@ -137,9 +143,13 @@ const emit = defineEmits(['requestComplete', 'requestError']);
 const getAiConfig = async () => {
     try {
         const cfg = await getAiEditorConfig()
-        // 若未取到模型，退化为关闭
-        if (!cfg?.ai || !cfg.ai.models?.length) return false
-        return cfg.ai
+        const ai = cfg?.ai
+        if (!ai) return false
+        const hasModels = Array.isArray(ai.models)
+            ? ai.models.length > 0
+            : (ai.models && typeof ai.models === 'object' && Object.keys(ai.models).length > 0)
+        if (!hasModels) return false
+        return ai
     } catch {
         return false
     }
@@ -148,31 +158,10 @@ const getAiConfig = async () => {
 onMounted(async () => {
     nextTick(async () => {
         if (editorContainerRef.value) {
+            // 直接使用 aieditor-provider 返回的原生配置（符合官方文档）
             let aiConfig = await getAiConfig();
-            try { console.log('[aieditor] before inject, aiConfig=', aiConfig) } catch {}
-            // 当没有模型时，强制关闭 ai，避免 AiEditor 内部读取 undefined 报错
-            if (!aiConfig || !aiConfig.models || (Array.isArray(aiConfig.models) ? !aiConfig.models.length : !Object.keys(aiConfig.models).length)) {
-                aiConfig = false
-            } else {
-                // 若有当前模型选择，则优先使用当前模型作为气泡/命令面板模型
-                try {
-                    const store = useModelConfigStore()
-                    const currentId = store.currentOrFirst
-                    if (currentId && aiConfig && Array.isArray(aiConfig.models)) {
-                        // 从后端 models 字典中通过 id 找真实名称
-                        // 此时 aieditor-provider 仍保留后端字典于 window 便于调试（选做）
-                    }
-                    // 兜底：若仍未设置，取字典第一个键
-                    if (!aiConfig.bubblePanelModel || !aiConfig.commandPanelModel) {
-                        const arr = Array.isArray(aiConfig.models) ? aiConfig.models : Object.keys(aiConfig.models || {})
-                        if (arr.length) {
-                            aiConfig.bubblePanelModel = aiConfig.bubblePanelModel || arr[0]
-                            aiConfig.commandPanelModel = aiConfig.commandPanelModel || arr[0]
-                            try { console.log('[aieditor] fallback model name:', aiConfig.bubblePanelModel) } catch {}
-                        }
-                    }
-                } catch {}
-            }
+            const aiToInject = aiConfig || false;
+
             aiEditor = new AiEditor({
                 element: editorContainerRef.value,
                 placeholder: "点击输入内容...",
@@ -182,9 +171,19 @@ onMounted(async () => {
                         content.value = editor.getHtml();
                     }
                 },
-                ai: aiConfig === false ? false : aiConfig
+                ai: aiToInject
             });
             try { console.log('[aieditor] editor inited with ai:', aiConfig !== false, aiConfig) } catch {}
+            // 若传入了初始 HTML，编辑器准备好后立即写入
+            try {
+                if (props.initialHtml) {
+                    if (aiEditor.setHtml) {
+                        aiEditor.setHtml(props.initialHtml || '');
+                    } else if (aiEditor.setContent) {
+                        aiEditor.setContent(props.initialHtml || '');
+                    }
+                }
+            } catch {}
             
             if (editorContainerRef.value) {
                 const editorElement = editorContainerRef.value.querySelector('.ai-editor');
@@ -559,6 +558,22 @@ onBeforeUnmount(() => {
     }
     if (ctrl) {
         ctrl.abort();
+    }
+});
+
+// 监听外部传入的初始 HTML 变化，随时同步到编辑器
+watch(() => props.initialHtml, (val) => {
+    try {
+        if (aiEditor && typeof aiEditor.setHtml === 'function') {
+            aiEditor.setHtml(val || '');
+        } else if (aiEditor && typeof aiEditor.setContent === 'function') {
+            aiEditor.setContent(val || '');
+        } else if (editorContainerRef.value) {
+            const el = editorContainerRef.value.querySelector('.ai-editor');
+            if (el) el.innerHTML = val || '';
+        }
+    } catch (e) {
+        console.error('同步 initialHtml 失败:', e);
     }
 });
 

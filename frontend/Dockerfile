@@ -1,8 +1,20 @@
-# 第一阶段：构建阶段
-ARG NODE_IMAGE=docker.m.daocloud.io/library/node:18-alpine
-FROM ${NODE_IMAGE} AS builder
+# 全局可用的构建参数（需放在文件最上方，便于在 FROM 中使用）
+ARG NODE_IMAGE=node:18-alpine
+ARG NGINX_IMAGE=nginx:alpine
 
+# 第一阶段：构建阶段
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /build
+
+# 接收 Vite 环境变量（在构建阶段注入）
+ARG VITE_AI_BASE_URL
+ARG VITE_AI_API_KEY
+ARG VITE_AI_MODEL
+ARG VITE_AI_PROVIDER_TYPE
+ENV VITE_AI_BASE_URL=${VITE_AI_BASE_URL} \
+    VITE_AI_API_KEY=${VITE_AI_API_KEY} \
+    VITE_AI_MODEL=${VITE_AI_MODEL} \
+    VITE_AI_PROVIDER_TYPE=${VITE_AI_PROVIDER_TYPE}
 
 # 复制 package 文件
 COPY package*.json ./
@@ -18,7 +30,7 @@ COPY . .
 RUN npm run build
 
 # 第二阶段：Nginx 服务阶段
-FROM docker.m.daocloud.io/library/nginx:alpine
+FROM ${NGINX_IMAGE}
 
 # 复制自定义 nginx 配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -91,6 +91,7 @@ services:
       dockerfile: Dockerfile
       args:
         NODE_IMAGE: docker.m.daocloud.io/library/node:18-alpine
+        NGINX_IMAGE: docker.m.daocloud.io/library/nginx:alpine
     container_name: frontend
     restart: unless-stopped
     depends_on:

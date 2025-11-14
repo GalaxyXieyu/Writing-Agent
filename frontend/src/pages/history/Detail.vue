@@ -11,7 +11,7 @@
       </div>
     </div>
     <div class="flex-1 min-h-0">
-      <RichTextEditor ref="editorRef" :templateTitle="title" />
+      <RichTextEditor ref="editorRef" :templateTitle="title" :initialHtml="htmlCache" />
     </div>
   </div>
 </template>
@@ -29,7 +29,7 @@ const route = useRoute();
 const editorRef = ref(null);
 const title = ref('');
 const createTime = ref('');
-let htmlCache = '';
+const htmlCache = ref('');
 
 onMounted(async () => {
   const id = route.query.id;
@@ -40,7 +40,7 @@ onMounted(async () => {
     createTime.value = res.data.create_date || '';
     // 将 markdown 渲染到编辑器
     const html = res.data.solution_content || '';
-    htmlCache = html;
+    htmlCache.value = html;
     // 调用组件暴露的 setHtml 方法，确保完整内容写入
     requestAnimationFrame(() => {
       try {
@@ -53,15 +53,29 @@ onMounted(async () => {
 });
 
 const exportWord = async () => {
-  const converted = await asBlob(htmlCache || document.querySelector('.ai-editor')?.innerHTML || '', {orientation: 'portrait'});
+  const converted = await asBlob(htmlCache.value || document.querySelector('.ai-editor')?.innerHTML || '', {orientation: 'portrait'});
   saveAs(converted, `${title.value || '解决方案'}.docx`);
 };
+
+// 运行时按需从 CDN 加载 html2pdf，避免打包阶段解析失败
+async function ensureHtml2Pdf() {
+  if (window.html2pdf) return window.html2pdf;
+  const url = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.html2pdf;
+}
 
 const exportPdf = async () => {
   const el = document.querySelector('.ai-editor');
   if (!el) return;
-  const mod = await import('html2pdf.js');
-  const html2pdf = mod.default || mod;
+  const html2pdf = await ensureHtml2Pdf();
   html2pdf().from(el).set({ filename: `${title.value || '解决方案'}.pdf` }).save();
 };
 </script>

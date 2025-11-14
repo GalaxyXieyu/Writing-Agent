@@ -94,6 +94,14 @@ async def update_model_config(db: AsyncSession, model_id: int, data: ModelConfig
     if obj.is_default:
         await _unset_others_default(db, obj)
 
+    # 配置更新后清理对应模型的缓存，确保新配置（base_url/api_key 等）立即生效
+    try:
+        # 延迟导入以避免循环依赖
+        from ai.llm.llm_factory import LLMFactory
+        LLMFactory.clear_cache(model_id)
+    except Exception:
+        pass
+
     return obj
 
 
@@ -104,6 +112,12 @@ async def delete_model_config(db: AsyncSession, model_id: int) -> bool:
     obj.status_cd = 'N'
     obj.is_default = False
     await db.commit()
+    # 清理缓存
+    try:
+        from ai.llm.llm_factory import LLMFactory
+        LLMFactory.clear_cache(model_id)
+    except Exception:
+        pass
     return True
 
 
@@ -115,6 +129,12 @@ async def set_default_model(db: AsyncSession, model_id: int) -> Optional[AiModel
     await db.commit()
     await _unset_others_default(db, obj)
     await db.refresh(obj)
+    # 清理缓存，避免仍使用旧默认
+    try:
+        from ai.llm.llm_factory import LLMFactory
+        LLMFactory.clear_cache(model_id)
+    except Exception:
+        pass
     return obj
 
 

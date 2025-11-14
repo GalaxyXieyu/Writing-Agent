@@ -36,6 +36,7 @@ async def aieditor_model_config(db: AsyncSession = Depends(get_async_db), author
     tok = _extract_token(authorization, token)
     user = await get_current_user(db, tok) if tok else None
     user_id = getattr(user, 'user_id', None)
+    is_admin = bool(getattr(user, 'is_admin', 0)) if user else False
 
     # 读取可用模型列表（当前用户可见且有效）
     q = ModelConfigQuery(page=1, page_size=100, user_id=None, status_cd='Y')
@@ -46,7 +47,8 @@ async def aieditor_model_config(db: AsyncSession = Depends(get_async_db), author
 
     # 提供器：以名称为 key 的对象，AiEditor 某些版本更偏好这种结构
     providers = {
-        "writing-agent": {
+        # 代理模式（安全，推荐）：前端 -> 本服务 /api/aieditor -> 转发到真实模型
+        "proxy": {
             "type": "openai",
             "baseURL": "/api/aieditor",
             "apiKey": "use-header"
@@ -56,8 +58,17 @@ async def aieditor_model_config(db: AsyncSession = Depends(get_async_db), author
     models = {}
     for r in rows:
         model_name = getattr(r, 'model', None) or f"model-{r.id}"
+        # 如果是管理员，则暴露“直连” Provider，名字与模型 ID 绑定，baseURL/apiKey 取自数据库
+        provider_name = "proxy"
+        if is_admin:
+            provider_name = f"openai-{r.id}"
+            providers[provider_name] = {
+                "type": "openai",
+                "baseURL": getattr(r, 'base_url', None) or '',
+                "apiKey": getattr(r, 'api_key', None) or ''
+            }
         models[model_name] = {
-            "provider": "writing-agent",
+            "provider": provider_name,
             "displayName": getattr(r, 'name', None) or model_name,
             "id": r.id
         }
