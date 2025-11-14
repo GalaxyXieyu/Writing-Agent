@@ -35,6 +35,7 @@ import {marked} from 'marked';
 import {fetchEventSource} from "@microsoft/fetch-event-source";
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {getKnowToWriteUrl, createArticleUrl} from '@/service/api.solution'
+import { getAiEditorConfig } from '@/lib/aieditor-provider'
 import {useModelConfigStore} from '@/store/modules/modelConfig'
 import {asBlob} from 'html-docx-js-typescript';
 import {saveAs} from 'file-saver';
@@ -132,13 +133,46 @@ const scheduleRender = (immediate = false) => {
 
 const emit = defineEmits(['requestComplete', 'requestError']);
 
-// 明确关闭 AiEditor 内置 AI（避免其要求 bubblePanelModel 等配置）
-const getAiEditorConfig = () => false;
+// 动态获取 AiEditor 的 AI 配置；失败则关闭 ai
+const getAiConfig = async () => {
+    try {
+        const cfg = await getAiEditorConfig()
+        // 若未取到模型，退化为关闭
+        if (!cfg?.ai || !cfg.ai.models?.length) return false
+        return cfg.ai
+    } catch {
+        return false
+    }
+}
 
-onMounted(() => {
-    nextTick(() => {
+onMounted(async () => {
+    nextTick(async () => {
         if (editorContainerRef.value) {
-            const aiConfig = getAiEditorConfig();
+            let aiConfig = await getAiConfig();
+            try { console.log('[aieditor] before inject, aiConfig=', aiConfig) } catch {}
+            // 当没有模型时，强制关闭 ai，避免 AiEditor 内部读取 undefined 报错
+            if (!aiConfig || !aiConfig.models || (Array.isArray(aiConfig.models) ? !aiConfig.models.length : !Object.keys(aiConfig.models).length)) {
+                aiConfig = false
+            } else {
+                // 若有当前模型选择，则优先使用当前模型作为气泡/命令面板模型
+                try {
+                    const store = useModelConfigStore()
+                    const currentId = store.currentOrFirst
+                    if (currentId && aiConfig && Array.isArray(aiConfig.models)) {
+                        // 从后端 models 字典中通过 id 找真实名称
+                        // 此时 aieditor-provider 仍保留后端字典于 window 便于调试（选做）
+                    }
+                    // 兜底：若仍未设置，取字典第一个键
+                    if (!aiConfig.bubblePanelModel || !aiConfig.commandPanelModel) {
+                        const arr = Array.isArray(aiConfig.models) ? aiConfig.models : Object.keys(aiConfig.models || {})
+                        if (arr.length) {
+                            aiConfig.bubblePanelModel = aiConfig.bubblePanelModel || arr[0]
+                            aiConfig.commandPanelModel = aiConfig.commandPanelModel || arr[0]
+                            try { console.log('[aieditor] fallback model name:', aiConfig.bubblePanelModel) } catch {}
+                        }
+                    }
+                } catch {}
+            }
             aiEditor = new AiEditor({
                 element: editorContainerRef.value,
                 placeholder: "点击输入内容...",
@@ -148,9 +182,9 @@ onMounted(() => {
                         content.value = editor.getHtml();
                     }
                 },
-                // 显式传递 ai:false 关闭内置 AI，避免控制台反复报 model name 错误
                 ai: aiConfig === false ? false : aiConfig
             });
+            try { console.log('[aieditor] editor inited with ai:', aiConfig !== false, aiConfig) } catch {}
             
             if (editorContainerRef.value) {
                 const editorElement = editorContainerRef.value.querySelector('.ai-editor');
