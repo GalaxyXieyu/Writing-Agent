@@ -27,7 +27,7 @@ def build_paragraph_chain(llm: ChatOpenAI):
     """构造段落生成链，外部注入 llm（向后兼容）。"""
     return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | paragraph_generate_prompt  | llm | StrOutputParser()
 
-async def build_paragraph_chain_async(llm: ChatOpenAI, db: Optional[AsyncSession] = None):
+async def build_paragraph_chain_async(llm: ChatOpenAI, db: Optional[AsyncSession] = None, example_output: Optional[str] = None):
     """
     异步构造段落生成链，支持从数据库读取提示词。
     
@@ -38,15 +38,15 @@ async def build_paragraph_chain_async(llm: ChatOpenAI, db: Optional[AsyncSession
     Returns:
         配置好的 LangChain chain
     """
-    prompt = await get_paragraph_generate_prompt(db=db)
+    prompt = await get_paragraph_generate_prompt(db=db, example_output=example_output)
     return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | prompt | llm | StrOutputParser()
 
-async def build_paragraph_chain_async_stream(llm: ChatOpenAI, db: Optional[AsyncSession] = None):
+async def build_paragraph_chain_async_stream(llm: ChatOpenAI, db: Optional[AsyncSession] = None, example_output: Optional[str] = None):
     """
     流式专用链：不接 StrOutputParser，避免流式聚合阶段对 None 做 "+=" 导致报错。
     直接让上层从 chunk/AIMessageChunk 中读取 content。
     """
-    prompt = await get_paragraph_generate_prompt(db=db)
+    prompt = await get_paragraph_generate_prompt(db=db, example_output=example_output)
     return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | prompt | llm
 
 # headers = {

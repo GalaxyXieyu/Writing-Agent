@@ -95,6 +95,8 @@ class TemplateChild(BaseModel):
     titleName: str
     showOrder: Optional[int] = None
     writingRequirement: Optional[str] = None
+    # 新增：章节级参考输出（可选），用于指导本章节生成
+    referenceOutput: Optional[str] = None
     statusCd: Optional[str] = None
     children: Optional[List['TemplateChild']] = Field(default=None, allow_none=True)
 
@@ -106,6 +108,8 @@ class TemplateData(BaseModel):
     titleName: str
     showOrder: Optional[int] = None
     writingRequirement: Optional[str] = None
+    # 新增：章节级参考输出（可选）
+    referenceOutput: Optional[str] = None
     statusCd: Optional[str] = None
     children: Optional[List[TemplateChild]] = Field(default=None, allow_none=True)
 

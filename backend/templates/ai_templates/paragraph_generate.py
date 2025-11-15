@@ -28,15 +28,17 @@ paragraph_generate_template_default = """
 ##【上一章节内容】={last_para_content}
 ##【本章标题】={titleNames}
 ##【本章要求】={requirements}
+{exampleOutput}
 """
 
 
-async def get_paragraph_generate_prompt(db: Optional[AsyncSession] = None) -> PromptTemplate:
+async def get_paragraph_generate_prompt(db: Optional[AsyncSession] = None, example_output: Optional[str] = None) -> PromptTemplate:
     """
     从数据库获取文章生成提示词，如果数据库中没有则使用默认提示词。
     
     Args:
         db: 数据库会话
+        example_output: 可选的章节级示例输出内容
     
     Returns:
         PromptTemplate: LangChain 提示词模板
@@ -52,7 +54,21 @@ async def get_paragraph_generate_prompt(db: Optional[AsyncSession] = None) -> Pr
         except Exception:
             # 如果读取失败，使用默认提示词
             pass
-    
+
+    # 处理示例输出：和模板生成保持一致的注入策略
+    if example_output and str(example_output).strip():
+        section = f"\n## 示例输出：\n{str(example_output).strip()}\n"
+        if "{exampleOutput}" not in prompt_content:
+            # 插到本章要求后面
+            prompt_content = prompt_content.replace(
+                "##【本章要求】={requirements}",
+                f"##【本章要求】={{requirements}}{section}"
+            )
+        else:
+            prompt_content = prompt_content.replace("{exampleOutput}", section)
+    else:
+        prompt_content = prompt_content.replace("{exampleOutput}", "")
+
     return PromptTemplate.from_template(prompt_content)
 
 

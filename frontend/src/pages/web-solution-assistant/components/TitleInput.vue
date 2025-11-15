@@ -71,6 +71,18 @@
           />
           <p class="text-right text-responsive-xs text-muted-foreground">{{ item.writingRequirement?.length || 0 }}/300</p>
         </div>
+
+        <!-- 参考输出（可选） -->
+        <div class="space-y-2.5">
+          <Label class="text-responsive-sm font-medium text-foreground">参考输出（可选）</Label>
+          <Textarea
+            v-model="item.referenceOutput"
+            placeholder="可粘贴本章期望的示例输出，便于参考"
+            :maxlength="1000"
+            class="min-h-[90px] resize-none w-full"
+          />
+          <p class="text-right text-responsive-xs text-muted-foreground">{{ item.referenceOutput?.length || 0 }}/1000</p>
+        </div>
         
         <!-- 二级标题列表 -->
         <div v-if="item.children && item.children.length > 0" class="mt-5 space-y-4">
@@ -124,6 +136,18 @@
                 />
                 <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.writingRequirement?.length || 0 }}/300</p>
               </div>
+
+              <!-- 参考输出（可选） -->
+              <div class="space-y-2.5">
+                <Label class="text-responsive-xs font-medium text-foreground">参考输出（可选）</Label>
+                <Textarea
+                  v-model="childrenItem.referenceOutput"
+                  placeholder="可粘贴本节期望的示例输出，便于参考"
+                  :maxlength="1000"
+                  class="min-h-[80px] resize-none w-full"
+                />
+                <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.referenceOutput?.length || 0 }}/1000</p>
+              </div>
             </div>
             
             <!-- 三级标题列表 -->
@@ -167,6 +191,18 @@
                     />
                     <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.writingRequirement?.length || 0 }}/300</p>
                   </div>
+
+                  <!-- 参考输出（可选） -->
+                  <div class="space-y-2">
+                    <Label class="text-responsive-xs font-medium text-foreground">参考输出（可选）</Label>
+                    <Textarea
+                      v-model="thirdLevelItem.referenceOutput"
+                      placeholder="可粘贴该小节期望的示例输出，便于参考"
+                      :maxlength="1000"
+                      class="min-h-[60px] resize-none w-full text-responsive-sm"
+                    />
+                    <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.referenceOutput?.length || 0 }}/1000</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -206,6 +242,7 @@ const props = defineProps({
           titleName: '',
           showOrder: 1,
           writingRequirement: '',
+          referenceOutput: '',
           statusCd: "Y",
           isFirstTitleClose:true,
           children: [],
@@ -218,7 +255,13 @@ let globalIdCounter = 1;
 const addFirstLevelTitle = () => {
     const firstTitleId = ++globalIdCounter;
     console.log("一级标题的 children 数组已初始化",firstTitleId);
-  props.titleData.push({titleId:firstTitleId,children:[]});
+  props.titleData.push({
+    titleId:firstTitleId,
+    titleName: '',
+    writingRequirement: '',
+    referenceOutput: '',
+    children:[]
+  });
 };
 //删除一级标题
 const deleteFirstLevelTitle = (item) => {
@@ -235,7 +278,13 @@ const addSecondLevelTitle = (item) => {
     console.log("二级标题的 children 数组已初始化",secondTitleId);
   for (let i = 0; i < props.titleData.length; i++) {
     if (props.titleData[i].titleId === item.titleId) {
-      props.titleData[i].children.push({titleId:secondTitleId});
+      props.titleData[i].children.push({
+        titleId:secondTitleId,
+        titleName: '',
+        writingRequirement: '',
+        referenceOutput: '',
+        children: []
+      });
     }
   }
 };
@@ -267,7 +316,12 @@ const addThirdLevelTitle = (item, secondLevelItem) => {
                     if (!props.titleData[i].children[j].children) {
                         props.titleData[i].children[j].children = [];
                     }
-                    props.titleData[i].children[j].children.push({ titleId: thirdTitleId });
+                    props.titleData[i].children[j].children.push({ 
+                      titleId: thirdTitleId,
+                      titleName: '',
+                      writingRequirement: '',
+                      referenceOutput: ''
+                    });
                     console.log("三级标题已添加",props.titleData);
                 }
             }

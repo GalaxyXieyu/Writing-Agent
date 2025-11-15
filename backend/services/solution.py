@@ -122,7 +122,12 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
         # 使用异步函数构建 chain，支持从数据库读取提示词
         from ai.agents.paragraph_writer import build_paragraph_chain_async
         llm_no_usage = llm.bind(stream_options={"include_usage": False})
-        chain = await build_paragraph_chain_async(llm_no_usage, db=db)
+        # 统一使用 exampleOutput 作为章节级示例输出的入参名称；
+        # 前端 TitleInput.vue 使用 referenceOutput 字段，后端此处对接为 exampleOutput。
+        example_output = getattr(chapter, "exampleOutput", None)
+        if not example_output:
+            example_output = getattr(chapter, "referenceOutput", None)
+        chain = await build_paragraph_chain_async(llm_no_usage, db=db, example_output=example_output)
         inputs = {
             "complete_title": highest_level_title or "",
             "last_para_content": last_para_content or "",
