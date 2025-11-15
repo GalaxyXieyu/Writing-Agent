@@ -7,7 +7,7 @@
       </div>
       <div class="space-x-2">
         <button class="px-3 py-1 border rounded text-sm" @click="exportWord">导出 Word</button>
-        <button class="px-3 py-1 border rounded text-sm" @click="exportPdf">导出 PDF</button>
+        <button class="px-3 py-1 border rounded text-sm" @click="exportMarkdown">导出 Markdown</button>
       </div>
     </div>
     <div class="flex-1 min-h-0">
@@ -57,10 +57,10 @@ const exportWord = async () => {
   saveAs(converted, `${title.value || '解决方案'}.docx`);
 };
 
-// 运行时按需从 CDN 加载 html2pdf，避免打包阶段解析失败
-async function ensureHtml2Pdf() {
-  if (window.html2pdf) return window.html2pdf;
-  const url = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+// 运行时按需从 CDN 加载 Turndown（HTML -> Markdown）
+async function ensureTurndown() {
+  if (window.TurndownService) return window.TurndownService;
+  const url = 'https://cdn.jsdelivr.net/npm/turndown/dist/turndown.js';
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = url;
@@ -69,14 +69,16 @@ async function ensureHtml2Pdf() {
     s.onerror = reject;
     document.head.appendChild(s);
   });
-  return window.html2pdf;
+  return window.TurndownService;
 }
 
-const exportPdf = async () => {
-  const el = document.querySelector('.ai-editor');
-  if (!el) return;
-  const html2pdf = await ensureHtml2Pdf();
-  html2pdf().from(el).set({ filename: `${title.value || '解决方案'}.pdf` }).save();
+const exportMarkdown = async () => {
+  const html = htmlCache.value || document.querySelector('.ai-editor')?.innerHTML || '';
+  const TurndownService = await ensureTurndown();
+  const service = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+  const md = service.turndown(html || '');
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  saveAs(blob, `${title.value || '解决方案'}.md`);
 };
 </script>
 
