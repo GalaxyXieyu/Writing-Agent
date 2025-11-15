@@ -78,10 +78,10 @@
           <Textarea
             v-model="item.referenceOutput"
             placeholder="可粘贴本章期望的示例输出，便于参考"
-            :maxlength="1000"
+            :maxlength="5000"
             class="min-h-[90px] resize-none w-full"
           />
-          <p class="text-right text-responsive-xs text-muted-foreground">{{ item.referenceOutput?.length || 0 }}/1000</p>
+          <p class="text-right text-responsive-xs text-muted-foreground">{{ item.referenceOutput?.length || 0 }}/5000</p>
         </div>
         
         <!-- 二级标题列表 -->
@@ -143,10 +143,10 @@
                 <Textarea
                   v-model="childrenItem.referenceOutput"
                   placeholder="可粘贴本节期望的示例输出，便于参考"
-                  :maxlength="1000"
+                  :maxlength="5000"
                   class="min-h-[80px] resize-none w-full"
                 />
-                <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.referenceOutput?.length || 0 }}/1000</p>
+                <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.referenceOutput?.length || 0 }}/5000</p>
               </div>
             </div>
             
@@ -198,10 +198,10 @@
                     <Textarea
                       v-model="thirdLevelItem.referenceOutput"
                       placeholder="可粘贴该小节期望的示例输出，便于参考"
-                      :maxlength="1000"
+                      :maxlength="5000"
                       class="min-h-[60px] resize-none w-full text-responsive-sm"
                     />
-                    <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.referenceOutput?.length || 0 }}/1000</p>
+                    <p class="text-right text-responsive-xs text-muted-foreground">{{ thirdLevelItem.referenceOutput?.length || 0 }}/5000</p>
                   </div>
                 </div>
               </div>
