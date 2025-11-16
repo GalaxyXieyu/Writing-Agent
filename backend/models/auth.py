@@ -98,6 +98,12 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    """用户修改密码请求"""
+    old_password: str = Field(..., description="当前密码")
+    new_password: str = Field(..., description="新密码")
+
+
 class SetUserStatusRequest(BaseModel):
     user_id: str
     status: str  # 'Y' or 'N'

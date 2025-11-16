@@ -1,8 +1,8 @@
 """
 认证相关路由
-包括：用户登录、注册、Token验证
+包括：用户登录、注册、Token验证、修改密码
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,15 +10,44 @@ from config import get_async_db
 from models.auth import (
     LoginRequest, CheckTokenRequest,
     RegisterAdminRequest, RegisterWithInviteRequest,
+    ChangePasswordRequest, User, AdminInvite, UserToken
 )
 from services.auth import verify_login, generate_token, save_token, verify_token
 from services.user import create_user
 from sqlalchemy import select
-from models.auth import User, AdminInvite
 from datetime import datetime, timedelta
 from utils.logger import mylog
+from typing import Optional
 
 router = APIRouter()
+
+
+async def get_current_user(db: AsyncSession, token: str) -> Optional[User]:
+    """从token获取当前用户"""
+    result = await db.execute(
+        select(UserToken).where(
+            UserToken.token == token,
+            UserToken.expire_time > datetime.now()
+        )
+    )
+    token_record = result.scalar_one_or_none()
+    if not token_record:
+        return None
+    
+    result = await db.execute(
+        select(User).where(
+            User.user_id == token_record.user_id,
+            User.status == 'Y'
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+def _extract_token(authorization: Optional[str], token_param: Optional[str]) -> Optional[str]:
+    """从请求头或参数中提取token"""
+    if authorization and authorization.startswith("Bearer "):
+        return authorization[7:]
+    return token_param
 
 
 @router.post("/login")
@@ -290,3 +319,93 @@ async def register_with_invite(request: RegisterWithInviteRequest, db: AsyncSess
         return JSONResponse(status_code=200, content=jsonable_encoder({
             "code": 500, "message": f"邀请码注册失败: {str(e)}", "type": "error", "data": None
         }))
+
+
+@router.post("/user/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_async_db),
+    authorization: str = Header(None),
+    token: str = None
+):
+    """
+    用户修改密码接口
+    """
+    try:
+        # 提取token
+        tok = _extract_token(authorization, token)
+        if not tok:
+            return JSONResponse(
+                status_code=200,
+                content=jsonable_encoder({
+                    "code": 401,
+                    "message": "未登录或token无效",
+                    "type": "error",
+                    "data": None
+                })
+            )
+        
+        # 获取当前用户
+        user = await get_current_user(db, tok)
+        if not user:
+            return JSONResponse(
+                status_code=200,
+                content=jsonable_encoder({
+                    "code": 401,
+                    "message": "用户不存在或token已过期",
+                    "type": "error",
+                    "data": None
+                })
+            )
+        
+        # 验证旧密码
+        if user.password != request.old_password:
+            return JSONResponse(
+                status_code=200,
+                content=jsonable_encoder({
+                    "code": 400,
+                    "message": "当前密码错误",
+                    "type": "error",
+                    "data": None
+                })
+            )
+        
+        # 验证新密码长度
+        if len(request.new_password) < 6:
+            return JSONResponse(
+                status_code=200,
+                content=jsonable_encoder({
+                    "code": 400,
+                    "message": "新密码长度至少为6位",
+                    "type": "error",
+                    "data": None
+                })
+            )
+        
+        # 更新密码
+        user.password = request.new_password
+        await db.commit()
+        
+        mylog.info(f"用户 {user.username} 修改密码成功")
+        
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({
+                "code": 200,
+                "message": "密码修改成功",
+                "type": "success",
+                "data": None
+            })
+        )
+        
+    except Exception as e:
+        mylog.error(f"修改密码失败: {str(e)}")
+        return JSONResponse(
+            status_code=200,
+            content=jsonable_encoder({
+                "code": 500,
+                "message": f"修改密码失败: {str(e)}",
+                "type": "error",
+                "data": None
+            })
+        )
