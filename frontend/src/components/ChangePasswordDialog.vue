@@ -1,72 +1,64 @@
 <template>
-  <Dialog :open="open" @update:open="(val) => $emit('update:open', val)">
-    <div class="fixed inset-0 z-50 flex items-center justify-center">
-      <!-- 遮罩 -->
-      <div class="fixed inset-0 bg-black/40" @click="$emit('update:open', false)"></div>
-      
-      <!-- 对话框内容 -->
-      <div class="relative bg-background rounded-lg shadow-lg w-full max-w-md mx-4 p-6 z-10">
-        <DialogHeader>
-          <DialogTitle>修改密码</DialogTitle>
-          <DialogDescription>请输入当前密码和新密码</DialogDescription>
-        </DialogHeader>
+  <Dialog :modelValue="open" @update:modelValue="(val) => $emit('update:open', val)">
+    <DialogHeader>
+      <DialogTitle>修改密码</DialogTitle>
+      <DialogDescription>请输入当前密码和新密码</DialogDescription>
+    </DialogHeader>
 
-        <form @submit.prevent="handleSubmit" class="mt-6 space-y-4">
-          <div>
-            <Label for="oldPassword">当前密码</Label>
-            <Input
-              id="oldPassword"
-              type="password"
-              v-model="formData.oldPassword"
-              placeholder="请输入当前密码"
-              class="mt-1.5"
-              required
-            />
-          </div>
-
-          <div>
-            <Label for="newPassword">新密码</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              v-model="formData.newPassword"
-              placeholder="请输入新密码（至少6位）"
-              class="mt-1.5"
-              required
-            />
-          </div>
-
-          <div>
-            <Label for="confirmPassword">确认新密码</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              v-model="formData.confirmPassword"
-              placeholder="请再次输入新密码"
-              class="mt-1.5"
-              required
-            />
-          </div>
-
-          <DialogFooter class="mt-6">
-            <button
-              type="button"
-              @click="$emit('update:open', false)"
-              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="loading"
-              class="ml-3 px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
-            >
-              {{ loading ? '提交中...' : '确认修改' }}
-            </button>
-          </DialogFooter>
-        </form>
+    <form @submit.prevent="handleSubmit" class="mt-6 space-y-4">
+      <div>
+        <Label for="oldPassword">当前密码</Label>
+        <Input
+          id="oldPassword"
+          type="password"
+          v-model="formData.oldPassword"
+          placeholder="请输入当前密码"
+          class="mt-1.5"
+          required
+        />
       </div>
-    </div>
+
+      <div>
+        <Label for="newPassword">新密码</Label>
+        <Input
+          id="newPassword"
+          type="password"
+          v-model="formData.newPassword"
+          placeholder="请输入新密码（至少6位）"
+          class="mt-1.5"
+          required
+        />
+      </div>
+
+      <div>
+        <Label for="confirmPassword">确认新密码</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          v-model="formData.confirmPassword"
+          placeholder="请再次输入新密码"
+          class="mt-1.5"
+          required
+        />
+      </div>
+
+      <DialogFooter class="mt-6">
+        <button
+          type="button"
+          @click="$emit('update:open', false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        >
+          取消
+        </button>
+        <button
+          type="submit"
+          :disabled="loading"
+          class="ml-3 px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
+        >
+          {{ loading ? '提交中...' : '确认修改' }}
+        </button>
+      </DialogFooter>
+    </form>
   </Dialog>
 </template>
 
