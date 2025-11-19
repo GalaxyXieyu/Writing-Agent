@@ -1,7 +1,7 @@
 <template>
 	<button
 		:class="cn(
-			'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors',
+			'flex items-center w-full text-left px-3 py-2 mx-1 rounded-lg text-sm text-gray-600 hover:text-foreground hover:bg-gray-100 transition-colors duration-150 dark:text-gray-300 dark:hover:bg-neutral-800',
 			className
 		)"
 		@click="handleClick"

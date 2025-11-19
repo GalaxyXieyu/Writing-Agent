@@ -22,3 +22,11 @@ export const adminSetStatus = ({ user_id, status }) => {
 export const adminListRecords = ({ member_user_id = '', member_phone = '', type = '', kw = '', time_from = '', time_to = '', pageNum = 1, pageSize = 50 } = {}) => {
   return http({ method: 'GET', url: `${BASE}${PROXY}/admin/records`, params: { member_user_id, member_phone, type, kw, time_from, time_to, pageNum, pageSize } });
 };
+
+export const adminGetSystemConfigs = () => {
+  return http({ method: 'GET', url: `${BASE}${PROXY}/admin/system-configs` });
+};
+
+export const adminUpdateSystemConfigs = (configs) => {
+  return http({ method: 'POST', url: `${BASE}${PROXY}/admin/system-configs`, data: configs });
+};

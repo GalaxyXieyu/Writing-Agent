@@ -14,12 +14,12 @@
 			<div
 				v-if="isOpen"
 				:class="cn(
-					'absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none',
+					'absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-xl bg-white/95 backdrop-blur-sm shadow-xl border border-divide focus:outline-none dark:bg-neutral-900/95',
 					align === 'left' && 'left-0 right-auto',
 					className
 				)"
 			>
-				<div class="py-1">
+				<div class="py-2">
 					<slot />
 				</div>
 			</div>

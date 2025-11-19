@@ -21,6 +21,7 @@ async def init_database():
     from models import model_config  # noqa: F401
     from models import prompt_config  # noqa: F401
     from models import auth  # noqa: F401  确保用户与邀请表注册
+    from models import system_config  # noqa: F401  确保系统配置表注册
     
     engine = get_db_engine()
     async with engine.begin() as conn:

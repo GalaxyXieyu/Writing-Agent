@@ -52,13 +52,13 @@
       <DialogHeader>
         <DialogTitle>{{ form.id ? '编辑提示词' : '新增提示词' }}</DialogTitle>
       </DialogHeader>
-      <div class="space-y-4 py-4">
+      <div class="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
         <div class="space-y-2">
           <Label>提示词类型</Label>
           <select 
             v-if="!form.id" 
             v-model="form.prompt_type" 
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex h-10 w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-[border-color] duration-150 hover:border-gray-400 focus-visible:outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-800 dark:border-neutral-600"
           >
             <option value="">请选择提示词类型</option>
             <option value="template_generate">生成大纲</option>
@@ -71,21 +71,23 @@
           <Label>提示词内容</Label>
           <Textarea 
             v-model="form.prompt_content" 
-            :rows="20"
-            class="font-mono text-sm"
+            :rows="14"
+            class="font-mono text-xs leading-relaxed"
             placeholder="请输入提示词内容"
           />
-          <div class="text-xs text-muted-foreground mt-1">
-            支持的变量：{titleName}, {writingRequirement}, {exampleOutput}, {complete_title}, {last_para_content}, {titleNames}, {requirements}, {original_template}
+          <div class="text-xs text-gray-500 leading-relaxed dark:text-gray-400">
+            支持的变量：<code class="text-brand bg-brand/10 px-1 rounded">{titleName}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{writingRequirement}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{exampleOutput}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{complete_title}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{last_para_content}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{titleNames}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{requirements}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{original_template}</code>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
           <Label for="status_cd">状态</Label>
           <Switch id="status_cd" v-model="form.status_cd" :checked="form.status_cd === 'Y'" @update:checked="form.status_cd = $event ? 'Y' : 'N'" />
-          <span class="text-sm text-muted-foreground">{{ form.status_cd === 'Y' ? '有效' : '无效' }}</span>
+          <span class="text-sm font-medium" :class="form.status_cd === 'Y' ? 'text-green-600' : 'text-gray-400'">
+            {{ form.status_cd === 'Y' ? '✓ 有效' : '✗ 无效' }}
+          </span>
         </div>
       </div>
-      <DialogFooter>
+      <DialogFooter class="border-t border-gray-200 pt-4">
         <Button variant="outline" @click="visible = false">取消</Button>
         <Button @click="submit">保存</Button>
       </DialogFooter>

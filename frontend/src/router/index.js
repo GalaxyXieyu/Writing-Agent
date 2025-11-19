@@ -79,6 +79,16 @@ const routes = [
           requiresAdmin: true,
         },
       },
+      {
+        path: '/admin/system',
+        name: 'admin-system',
+        component: () => import('@/pages/admin/system/index.vue'),
+        meta: {
+          title: '系统设置',
+          requiresAuth: true,
+          requiresAdmin: true,
+        },
+      },
 		],
 	},
 ];

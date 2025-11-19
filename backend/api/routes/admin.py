@@ -2,7 +2,7 @@
 管理员相关路由：创建邀请码、成员管理、记录查询
 """
 from fastapi import APIRouter, Depends, Header
-from typing import Optional
+from typing import Optional, List, Dict
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from config import get_async_db
 from models.auth import User, AdminInvite, CreateInviteRequest, ResetPasswordRequest, SetUserStatusRequest, AdminRecordsQuery
 from models.file import AiFileRel
 from models.solution import AiSolutionSave
+from models.system_config import SystemConfig
 from utils.logger import mylog
 
 router = APIRouter()
@@ -274,3 +275,42 @@ async def list_records(db: AsyncSession = Depends(get_async_db), authorization: 
     end = start + pageSize
     page_items = items[start:end]
     return json_ok({"total": total, "list": page_items})
+
+
+@router.get("/system-configs")
+async def get_system_configs(db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return json_err("缺少token")
+    admin = await get_current_user(db, tok)
+    if not admin or not getattr(admin, 'is_admin', 0):
+        return json_err("无权限", 403)
+
+    # 确保 usage_doc_url 配置存在
+    result = await db.execute(select(SystemConfig).where(SystemConfig.config_key == 'usage_doc_url'))
+    if not result.scalar_one_or_none():
+        db.add(SystemConfig(config_key='usage_doc_url', config_value='', remark='使用说明文档链接'))
+        await db.commit()
+
+    result = await db.execute(select(SystemConfig))
+    configs = result.scalars().all()
+    return json_ok([{"config_key": c.config_key, "config_value": c.config_value, "remark": c.remark} for c in configs])
+
+
+@router.post("/system-configs")
+async def update_system_configs(payload: List[Dict[str, str]], db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return json_err("缺少token")
+    admin = await get_current_user(db, tok)
+    if not admin or not getattr(admin, 'is_admin', 0):
+        return json_err("无权限", 403)
+
+    for item in payload:
+        key = item.get('config_key')
+        value = item.get('config_value')
+        if key:
+            await db.execute(text(f"UPDATE system_config SET config_value = :value WHERE config_key = :key"), {'value': value, 'key': key})
+    
+    await db.commit()
+    return json_ok()

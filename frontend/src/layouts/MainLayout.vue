@@ -1,9 +1,33 @@
+<style>
+/* 全局样式 */
+:root {
+  --primary-color: #F17463;
+  --secondary-color: #202020;
+  --background-color: #ffffff;
+  --text-color: #202020;
+  --border-color: #eaedf1;
+}
+
+.dark {
+  --primary-color: #F17463;
+  --secondary-color: #f9f9f9;
+  --background-color: #000000;
+  --text-color: #f9f9f9;
+  --border-color: #343434;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+</style>
+
 <template>
-	<div class="flex h-screen flex-col bg-background">
+	<div class="flex h-screen flex-col bg-white dark:bg-black">
 		<!-- 顶部 Header -->
-		<header class="flex h-16 shrink-0 items-center justify-between border-b bg-background px-3 sm:px-4 md:px-6">
+		<header class="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-divide bg-white/80 backdrop-blur-sm px-4 md:px-6 shadow-aceternity dark:bg-neutral-900/80">
 			<div class="flex items-center gap-6">
-				<h1 class="text-base sm:text-lg font-semibold text-foreground whitespace-nowrap">AI 写作助手</h1>
+				<h1 class="text-base sm:text-lg font-semibold text-charcoal-700 whitespace-nowrap tracking-tight dark:text-neutral-100">AI 写作助手</h1>
 				
 				<!-- 桌面端横向导航菜单 -->
 				<nav class="hidden md:flex items-center gap-1">
@@ -12,10 +36,10 @@
 						:key="menu.key"
 						@click="handleNavClick(menu.key)"
 						:class="[
-							'px-3 py-1.5 text-sm rounded-md transition-colors',
+							'px-3 py-1.5 text-sm rounded-lg transition-colors duration-150',
 							activeNavMenu === menu.key
-								? 'bg-primary/10 text-primary font-medium'
-								: 'text-muted-foreground hover:text-foreground hover:bg-accent'
+								? 'bg-brand/10 text-brand font-medium'
+								: 'text-gray-600 hover:text-charcoal-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-neutral-100 dark:hover:bg-neutral-800'
 						]"
 					>
 						{{ menu.label }}
@@ -24,7 +48,7 @@
 
 				<!-- 移动端汉堡按钮 -->
 				<button
-					class="md:hidden inline-flex h-9 w-9 items-center justify-center rounded hover:bg-accent"
+					class="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-neutral-800"
 					aria-label="打开导航菜单"
 					@click="showMobileSidebar = true"
 				>
@@ -37,7 +61,7 @@
 			<div class="flex items-center gap-2 sm:gap-3 md:gap-4">
 				<DropdownMenu>
 					<template #trigger>
-						<button class="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground">
+						<button class="flex items-center gap-1 sm:gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm text-gray-600 hover:text-charcoal-700 hover:bg-gray-100 transition-colors dark:text-gray-300 dark:hover:text-neutral-100 dark:hover:bg-neutral-800">
 							<svg class="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 							</svg>
@@ -68,13 +92,13 @@
 		<transition name="fade">
 			<div v-if="showMobileSidebar" class="fixed inset-0 z-40 md:hidden">
 				<!-- 遮罩层 -->
-				<div class="absolute inset-0 bg-black/40" @click="showMobileSidebar = false"></div>
+				<div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showMobileSidebar = false"></div>
 				<!-- 抽屉面板 -->
 				<transition name="slide">
-				<aside class="absolute inset-y-0 left-0 w-64 max-w-[80vw] bg-background border-r shadow-xl flex flex-col">
-					<div class="flex items-center justify-between h-12 px-3 border-b">
-						<span class="text-sm font-medium">导航</span>
-						<button class="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-accent" @click="showMobileSidebar = false">
+				<aside class="absolute inset-y-0 left-0 w-64 max-w-[80vw] bg-white border-r border-divide shadow-2xl flex flex-col dark:bg-neutral-900">
+					<div class="flex items-center justify-between h-12 px-3 border-b border-divide">
+						<span class="text-sm font-medium text-charcoal-700 dark:text-neutral-100">导航</span>
+						<button class="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-neutral-800" @click="showMobileSidebar = false">
 							<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 							</svg>
@@ -87,10 +111,10 @@
 								:key="menu.key"
 								@click="handleMobileGo(menu.key)"
 								:class="[
-									'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
+									'w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-150',
 									activeNavMenu === menu.key
-										? 'bg-primary/10 text-primary font-medium'
-										: 'text-muted-foreground hover:text-foreground hover:bg-accent'
+										? 'bg-brand/10 text-brand font-medium'
+										: 'text-gray-600 hover:text-charcoal-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-neutral-100 dark:hover:bg-neutral-800'
 								]"
 							>
 								{{ menu.label }}
@@ -103,7 +127,7 @@
 		</transition>
 
 		<!-- 主内容区 -->
-		<main class="flex-1 min-w-0 min-h-0 overflow-hidden bg-background px-3 sm:px-4 md:px-6">
+		<main class="flex-1 min-w-0 min-h-0 overflow-hidden bg-white px-4 md:px-6 dark:bg-black">
 			<router-view />
 		</main>
 
@@ -113,9 +137,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useUserStore } from '@/store';
+import { useUserStore, useSystemStore } from '@/store';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import DropdownMenu from '@/components/ui/DropdownMenu.vue';
 import DropdownMenuItem from '@/components/ui/DropdownMenuItem.vue';
@@ -124,6 +148,7 @@ import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue';
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+const systemStore = useSystemStore();
 const showMobileSidebar = ref(false);
 const showChangePasswordDialog = ref(false);
 
@@ -136,11 +161,17 @@ const navMenus = computed(() => {
 		{ key: 'history', label: '历史记录' },
 	];
 	
+	// 如果配置了使用说明链接，添加使用说明菜单
+	if (systemStore.usageDocUrl) {
+		baseMenus.push({ key: 'usage-doc', label: '使用说明', isExternal: true });
+	}
+	
 	// 如果是管理员，添加管理菜单
 	if (userStore?.profile?.is_admin) {
 		baseMenus.push(
 			{ key: 'admin-members', label: '成员管理' },
-			{ key: 'admin-records', label: '成员记录' }
+			{ key: 'admin-records', label: '成员记录' },
+			{ key: 'admin-system', label: '系统设置' }
 		);
 	}
 	
@@ -157,12 +188,26 @@ const activeNavMenu = computed(() => {
 		'/prompt-config': 'prompt-config',
 		'/admin/members': 'admin-members',
 		'/admin/records': 'admin-records',
+		'/admin/system': 'admin-system',
 	};
 	return routeMap[route.path] || 'generate';
 });
 
 // 处理导航点击
 const handleNavClick = (key) => {
+	// 处理使用说明外部链接
+	if (key === 'usage-doc') {
+		let url = systemStore.usageDocUrl;
+		if (url) {
+			// 如果 URL 没有协议前缀，自动添加 https://
+			if (!/^https?:\/\//i.test(url)) {
+				url = 'https://' + url;
+			}
+			window.open(url, '_blank');
+		}
+		return;
+	}
+	
 	const routeMap = {
 		generate: '/web-solution-assistant',
 		history: '/history',
@@ -170,6 +215,7 @@ const handleNavClick = (key) => {
 		'prompt-config': '/prompt-config',
 		'admin-members': '/admin/members',
 		'admin-records': '/admin/records',
+		'admin-system': '/admin/system',
 	};
 	const targetRoute = routeMap[key];
 	if (targetRoute) {
@@ -199,6 +245,11 @@ const handleLogout = async () => {
 		// 用户取消
 	}
 };
+
+// 初始化获取系统配置
+onMounted(() => {
+	systemStore.fetchPublicConfigs();
+});
 </script>
 
 <style scoped lang="scss">
@@ -209,16 +260,5 @@ const handleLogout = async () => {
 .slide-enter-active, .slide-leave-active { transition: transform .22s ease; }
 .slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
 
-/* 主题色 */
-.bg-primary\/10 {
-	background: linear-gradient(90deg, rgba(165, 151, 245, 0.1) 1%, rgba(85, 113, 255, 0.1) 98%);
-}
-
-.text-primary {
-	background: linear-gradient(90deg, #a597f5 1%, #5571ff 98%);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-}
 </style>
 

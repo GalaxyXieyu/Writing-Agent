@@ -13,7 +13,7 @@
 				class="fixed inset-0 z-50 flex items-center justify-center"
 			>
 				<div
-					class="absolute inset-0 bg-black/30"
+					class="absolute inset-0 bg-black/50 backdrop-blur-sm"
 					@click="handleOverlayClick"
 				/>
 				<Transition
@@ -27,7 +27,7 @@
 					<div
 						v-if="modelValue"
 						:class="cn(
-							'relative z-10 flex w-full max-w-lg max-h-[85vh] overflow-hidden flex-col rounded-lg border bg-white dark:bg-gray-900 p-6 shadow-2xl',
+							'relative z-10 flex w-full max-w-lg max-h-[85vh] overflow-hidden flex-col rounded-2xl border border-divide bg-white dark:bg-neutral-900 p-6 shadow-2xl',
 							className
 						)"
 						@click.stop
