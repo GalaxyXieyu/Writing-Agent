@@ -216,20 +216,27 @@ async def upload_file(
 
 async def parse_file(db: AsyncSession, file_id: Integer, file_location: str):
     try:
+        mylog.info(f"[文件解析] 步骤1: 开始解析文件 file_id={file_id}, 路径={file_location}")
         data = await new_file_structure_extract(file_location)
-        print("文件解析成功预计返回数据：", json.dumps(data['data'], ensure_ascii=False))
+        mylog.info(f"[文件解析] 步骤2: 文件内容提取完成 file_id={file_id}, 页数={data.get('pages', 'N/A')}")
+        
         # 直接检查 data['data'] 是否存在并且不为空
         plan = data.get('data', {}).get('data', {})
         if 'titleName' in plan and 'writingRequirement' in plan:
+            mylog.info(f"[文件解析] 步骤3: 结构解析成功 file_id={file_id}, 标题={plan.get('titleName', '')}")
             await file_analysis_success(db, file_id, data['pages'], 1, json.dumps(plan, ensure_ascii=False))
+            mylog.info(f"[文件解析] 完成: 文件解析成功 file_id={file_id}")
         else:
-            print("文件解析失败失败文件解析失败失败文件解析失败失败文件解析失败失败")
-            await file_analysis_failed(db, file_id, 2,json.dumps(plan, ensure_ascii=False))
-    except:
-        await file_analysis_failed(db, file_id, 2)
+            mylog.warning(f"[文件解析] 步骤3: 结构解析失败，缺少必要字段 file_id={file_id}")
+            await file_analysis_failed(db, file_id, 2, json.dumps(plan, ensure_ascii=False))
+    except Exception as e:
+        mylog.error(f"[文件解析] 异常: file_id={file_id}, 错误={str(e)}")
+        await file_analysis_failed(db, file_id, 2, json.dumps({"error": str(e)}, ensure_ascii=False))
 
 async def background_parse(file_id: Integer, file_location: str):
+    mylog.info(f"[文件解析] 启动后台解析任务 file_id={file_id}")
     if not os.path.exists(file_location):
+        mylog.error(f"[文件解析] 文件不存在: {file_location}")
         raise FileNotFoundError(f"文件不存在: {file_location}")
     async with AsyncSessionLocal() as db:
         await parse_file(db, file_id, file_location)
@@ -377,8 +384,9 @@ async def file_delete(delete_File: deleteFile, db: AsyncSession = Depends(get_as
     )
 
 async def select_file_by_title(db: AsyncSession,fileName: str, userId: str):
+    # 只返回解析完成的文件（status_cd = '1'），过滤掉正在解析中或解析失败的文件
     stmt = select(AiFileRel).filter(
-        (AiFileRel.busi_id == userId) & (AiFileRel.busi_code == "S")
+        (AiFileRel.busi_id == userId) & (AiFileRel.busi_code == "S") & (AiFileRel.status_cd == "1")
     ).order_by(AiFileRel.create_date.desc())
     
     if fileName:

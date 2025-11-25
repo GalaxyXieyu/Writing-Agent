@@ -32,7 +32,8 @@ RUN set -eux; \
     libssl-dev \
     curl \
     ffmpeg \
-    git; \
+    git \
+    libreoffice-writer-nogui; \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements-prod.txt ./

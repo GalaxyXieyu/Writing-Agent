@@ -96,7 +96,7 @@ if REDIS_PASSWORD:
 # 创建异步数据库引擎
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
+    echo=False,  # 关闭 SQL 日志输出
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,

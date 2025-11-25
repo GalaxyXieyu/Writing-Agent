@@ -45,8 +45,11 @@
           <Progress :value="uploadPercent" :showLabel="true" />
         </div>
         <div v-if="parseStatus==='0'" class="rounded-md border p-3 text-sm text-muted-foreground">
-          文档已上传，解析中...
-          <Progress :value="100" class="mt-2 animate-pulse" />
+          <div class="flex items-center justify-between mb-2">
+            <span>文档已上传，解析中...</span>
+            <span class="text-primary font-medium">{{ parsePercent }}%</span>
+          </div>
+          <Progress :value="parsePercent" class="mt-2" />
         </div>
       </div>
 
@@ -85,7 +88,7 @@ import { useFileParseTask } from '@/composables/useFileParseTask'
 import { useTemplateCreateTask } from '@/composables/useTemplateCreateTask'
 
 const props = defineProps<{ visible: boolean, modelId?: any }>()
-const emit = defineEmits(['update:visible','applied','openLibrary','manageModel'])
+const emit = defineEmits(['update:visible','applied','openLibrary','manageModel','refreshList'])
 
 const innerVisible = computed({
   get: () => props.visible,
@@ -135,7 +138,31 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const uploadPercent = ref(0)
 const parseStatus = ref<'0'|'1'|'2'|'unknown'>('unknown')
+const parsePercent = ref(0)
+let parseTimer: ReturnType<typeof setInterval> | null = null
 const parseTask = useFileParseTask(userStore.profile.mobile)
+
+// 启动解析进度模拟
+function startParseProgress() {
+  parsePercent.value = 0
+  if (parseTimer) clearInterval(parseTimer)
+  parseTimer = setInterval(() => {
+    if (parsePercent.value < 95) {
+      // 前期快，后期慢，模拟真实解析体验
+      const increment = parsePercent.value < 30 ? 3 : parsePercent.value < 60 ? 2 : parsePercent.value < 80 ? 1 : 0.5
+      parsePercent.value = Math.min(95, parsePercent.value + increment)
+    }
+  }, 300)
+}
+
+// 停止解析进度模拟
+function stopParseProgress(success: boolean) {
+  if (parseTimer) {
+    clearInterval(parseTimer)
+    parseTimer = null
+  }
+  parsePercent.value = success ? 100 : 0
+}
 
 async function onPickFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
@@ -147,12 +174,18 @@ async function onPickFile(e: Event) {
   uploading.value = true
   uploadPercent.value = 0
   try {
-    const res = await uploadBusiFile(form)
+    const res = await uploadBusiFile(form, {
+      onUploadProgress: (progressEvent: any) => {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        uploadPercent.value = percent
+      }
+    })
     uploadPercent.value = 100
     uploading.value = false
     const fileId = res?.data?.data?.file_id
     if (fileId) {
       parseStatus.value = '0'
+      startParseProgress() // 启动解析进度模拟
       parseTask.watch(fileId)
     }
   } catch (e) {
@@ -164,7 +197,20 @@ async function onPickFile(e: Event) {
 const result = ref<any | null>(null)
 // 监听任务结果与文件解析结果
 watch(() => createTask.data.value, (v) => { if (v) result.value = v })
-watch(() => parseTask.result.value, (v) => { if (v) { result.value = v; parseStatus.value = '1' } })
+watch(() => parseTask.result.value, (v) => { 
+  if (v) { 
+    result.value = v
+    parseStatus.value = '1'
+    stopParseProgress(true) // 解析成功，进度到100%
+    emit('refreshList') // 通知父组件刷新模板列表
+  } 
+})
+watch(() => parseTask.error.value, (v) => {
+  if (v) {
+    parseStatus.value = '2'
+    stopParseProgress(false) // 解析失败
+  }
+})
 
 // 保留结果区，由用户点击“立即使用”后再进入编辑并保存
 

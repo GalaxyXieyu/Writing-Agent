@@ -19,7 +19,7 @@
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead class="w-[80px]">ID</TableHead>
+              <TableHead class="w-[80px]">序号</TableHead>
               <TableHead>名称</TableHead>
               <TableHead>模型</TableHead>
               <TableHead>Base URL</TableHead>
@@ -28,8 +28,8 @@
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in list" :key="row.id">
-              <TableCell>{{ row.id }}</TableCell>
+            <TableRow v-for="(row, idx) in list" :key="row.id">
+              <TableCell>{{ (page - 1) * pageSize + idx + 1 }}</TableCell>
               <TableCell>{{ row.name }}</TableCell>
               <TableCell>{{ row.model }}</TableCell>
               <TableCell>{{ row.base_url }}</TableCell>
@@ -214,10 +214,13 @@ const visiblePages = computed(() => {
 
 const refresh = async () => {
   loading.value = true
-  await store.fetchList({ page: page.value, page_size: pageSize.value, name: q.value.name })
-  list.value = store.modelList
-  total.value = store.pagination.total
-  loading.value = false
+  try {
+    await store.fetchList({ page: page.value, page_size: pageSize.value, name: q.value.name })
+    list.value = store.modelList
+    total.value = store.pagination.total
+  } finally {
+    loading.value = false
+  }
 }
 
 const openEdit = (row) => {
@@ -234,14 +237,13 @@ const submit = async () => {
     ElMessage.error('请填写完整信息')
     return
   }
-  // 保存前做一次实时验证，失败则拦截
+  // 保存前做一次实时验证，失败仅提示，不阻断保存
   try {
     const verifyRes = await store.verifyModel(undefined, undefined, form.value)
     if (verifyRes?.code !== 200) {
-      ElMessage.error(verifyRes?.message || '验证失败，请检查配置')
-      return
+      ElMessage.warning(verifyRes?.message || '验证失败，已仍然保存，可稍后在“验证”中重试')
     }
-  } catch (_) { /* http 已提示 */ }
+  } catch (_) { /* http 已提示，不阻断保存 */ }
   if (form.value.id) {
     await store.updateModel(form.value.id, form.value)
   } else {

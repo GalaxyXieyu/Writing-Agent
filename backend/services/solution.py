@@ -117,6 +117,12 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
     writing_requirements = generate_writing_requirements(chapter)
     structure = f"Writing Requirement: {writing_requirements}"
     complete_template = f"{structure}"
+    children_titles = []
+    try:
+        children_titles = [getattr(c, "titleName", None) or "" for c in (getattr(chapter, "children", None) or [])]
+    except Exception:
+        children_titles = []
+    expected_titles = "\n".join([f"- {t}" for t in children_titles if t])
 
     try:
         # 使用异步函数构建 chain，支持从数据库读取提示词
@@ -132,7 +138,8 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
             "complete_title": highest_level_title or "",
             "last_para_content": last_para_content or "",
             "titleNames": getattr(chapter, "titleName", None) or "",
-            "requirements": writing_requirements or ""
+            "requirements": writing_requirements or "",
+            "expected_titles": expected_titles or ""
         }
         try:
             # 直接使用 astream 返回的增量结果（AIMessageChunk 或字符串）

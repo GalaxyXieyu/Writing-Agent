@@ -1,10 +1,11 @@
 import math
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, Header
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from config import get_async_db
 from models.model_config import (
@@ -30,7 +31,19 @@ router = APIRouter()
 
 
 @router.post("/create")
-async def create_api(body: ModelConfigCreate, db: AsyncSession = Depends(get_async_db)):
+async def create_api(body: ModelConfigCreate, db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    if not getattr(user, 'is_admin', 0):
+        body.user_id = getattr(user, 'user_id', None)
     obj = await create_model_config(db, body)
     return JSONResponse(status_code=200, content=jsonable_encoder({
         "code": 200, "type": "success", "message": "创建成功", "data": obj
@@ -45,8 +58,21 @@ async def list_api(
     name: Optional[str] = None,
     model: Optional[str] = None,
     status_cd: Optional[str] = 'Y',
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    authorization: str = Header(None), token: str = None
 ):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    if not getattr(user, 'is_admin', 0):
+        user_id = getattr(user, 'user_id', None)
     q = ModelConfigQuery(page=page, page_size=page_size, user_id=user_id, name=name, model=model, status_cd=status_cd)
     rows, total = await list_model_configs(db, q)
     return JSONResponse(status_code=200, content=jsonable_encoder({
@@ -76,7 +102,27 @@ async def detail_api(model_id: int, db: AsyncSession = Depends(get_async_db)):
 
 
 @router.put("/{model_id}")
-async def update_api(model_id: int, body: ModelConfigUpdate, db: AsyncSession = Depends(get_async_db)):
+async def update_api(model_id: int, body: ModelConfigUpdate, db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    # 所有者或管理员才可更新
+    target = await get_model_config(db, model_id)
+    if not target:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 404, "type": "error", "message": "未找到模型配置", "data": None
+        }))
+    if not getattr(user, 'is_admin', 0) and getattr(target, 'user_id', None) not in (getattr(user, 'user_id', None), None):
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 403, "type": "error", "message": "无权限修改该模型", "data": None
+        }))
     obj = await update_model_config(db, model_id, body)
     if not obj:
         return JSONResponse(status_code=200, content=jsonable_encoder({
@@ -88,7 +134,26 @@ async def update_api(model_id: int, body: ModelConfigUpdate, db: AsyncSession = 
 
 
 @router.delete("/{model_id}")
-async def delete_api(model_id: int, db: AsyncSession = Depends(get_async_db)):
+async def delete_api(model_id: int, db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    target = await get_model_config(db, model_id)
+    if not target:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 404, "type": "error", "message": "未找到模型配置", "data": None
+        }))
+    if not getattr(user, 'is_admin', 0) and getattr(target, 'user_id', None) not in (getattr(user, 'user_id', None), None):
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 403, "type": "error", "message": "无权限删除该模型", "data": None
+        }))
     ok = await delete_model_config(db, model_id)
     if not ok:
         return JSONResponse(status_code=200, content=jsonable_encoder({
@@ -100,7 +165,26 @@ async def delete_api(model_id: int, db: AsyncSession = Depends(get_async_db)):
 
 
 @router.post("/set-default")
-async def set_default_api(model_id: int, db: AsyncSession = Depends(get_async_db)):
+async def set_default_api(model_id: int, db: AsyncSession = Depends(get_async_db), authorization: str = Header(None), token: str = None):
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    target = await get_model_config(db, model_id)
+    if not target:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 404, "type": "error", "message": "未找到模型配置", "data": None
+        }))
+    if not getattr(user, 'is_admin', 0) and getattr(target, 'user_id', None) not in (getattr(user, 'user_id', None), None):
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 403, "type": "error", "message": "无权限设置该模型为默认", "data": None
+        }))
     obj = await set_default_model(db, model_id)
     if not obj:
         return JSONResponse(status_code=200, content=jsonable_encoder({
@@ -174,3 +258,17 @@ async def verify_api(
         return JSONResponse(status_code=200, content=jsonable_encoder({
             "code": 500, "type": "error", "message": f"验证异常: {str(e)}", "data": None
         }))
+def _extract_token(authorization: Optional[str], token_param: Optional[str]) -> Optional[str]:
+    if authorization and authorization.startswith("Bearer "):
+        return authorization[7:]
+    return token_param
+
+
+async def get_current_user(db: AsyncSession, token: str):
+    from models.auth import UserToken, User
+    result = await db.execute(select(UserToken).where(UserToken.token == token))
+    t = result.scalar_one_or_none()
+    if not t:
+        return None
+    result = await db.execute(select(User).where(User.user_id == t.user_id, User.status == 'Y'))
+    return result.scalar_one_or_none()

@@ -11,17 +11,26 @@
 			<!-- 左侧整体滚动容器：限制高度，内部滚动 -->
 			<div class="flex flex-col gap-responsive w-full h-full min-h-0 overflow-y-auto pr-1">
         <!-- 模板选择区域 -->
-			<Card class="flex flex-col flex-1 min-h-0">
-			  <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive">
-            <CardTitle class="text-responsive-base font-semibold">写作模板</CardTitle>
-            <Button variant="ghost" size="sm" @click="lookTemplateDialog" class="h-auto p-0 text-primary text-responsive-sm">
+			<Card class="flex flex-col" :class="isTemplateCollapsed ? '' : 'flex-1 min-h-0'">
+			  <CardHeader class="flex flex-row items-center justify-between pb-3 px-responsive pt-responsive cursor-pointer select-none" @click="isTemplateCollapsed = !isTemplateCollapsed">
+            <div class="flex items-center gap-2">
+              <svg 
+                class="h-4 w-4 transition-transform duration-200 text-gray-600" 
+                :class="isTemplateCollapsed ? '-rotate-90' : ''"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              <CardTitle class="text-responsive-base font-semibold">写作模板</CardTitle>
+            </div>
+            <Button variant="ghost" size="sm" @click.stop="lookTemplateDialog" class="h-auto p-0 text-primary text-responsive-sm">
               查看全部模板
               <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </Button>
           </CardHeader>
-          <CardContent class="flex flex-1 min-h-0 flex-col gap-4 px-responsive pb-responsive">
+          <CardContent v-show="!isTemplateCollapsed" class="flex flex-1 min-h-0 flex-col gap-4 px-responsive pb-responsive">
 					<!-- 顶部搜索 + 筛选：在宽度不足时自动换行，下拉框单独占一行 -->
 					<div class="flex flex-wrap items-center gap-2">
 						<div class="flex-1 min-w-[200px]">
@@ -36,7 +45,7 @@
 							</el-select>
 						</div>
 					</div>
-            <div class="overflow-y-auto border-y max-h-[260px]">
+            <div class="overflow-y-auto border-y flex-1 min-h-0">
               <el-table 
                 ref="tableRef" 
                 :key="tableKey" 
@@ -45,7 +54,7 @@
                 @current-change="chooseTemplateFun"
                 :row-key="getRowKey"
                 :show-header="false"
-                class="no-horizontal-border"
+                class="no-horizontal-border h-full"
                 scrollbar-always-on>
                 <el-table-column>
                   <template #default="scope">
@@ -54,7 +63,7 @@
                 </el-table-column>
               </el-table>
             </div>
-            <Button variant="outline" @click="openBuilder" class="w-full">
+            <Button variant="outline" @click="openBuilder" class="w-full mt-auto flex-shrink-0">
               生成自定义模板
             </Button>
           </CardContent>
@@ -103,9 +112,9 @@
                 id="template-title"
                 v-model="templateTitle"
                 placeholder="输入文章标题"
-                :maxlength="100"
+                :maxlength="200"
               />
-	              <p class="mt-0.5 text-right text-responsive-xs text-muted-foreground">{{ templateTitle.length }}/100</p>
+              <p class="mt-0.5 text-right text-responsive-xs text-muted-foreground">{{ templateTitle.length }}/200</p>
             </div>
 
 	            <!-- 文章要求：单行为主，可手动拖拽变大，整体间距更紧凑 -->
@@ -272,7 +281,7 @@
             <div class="max-w-5xl mx-auto space-y-4">
               <div class="space-y-2">
                 <Label class="text-sm font-medium">文章标题</Label>
-                <Input v-model="templateTitle" placeholder="输入文章标题" />
+                <Input v-model="templateTitle" placeholder="输入文章标题" :maxlength="200" />
               </div>
               <div class="space-y-2">
                 <Label class="text-sm font-medium">文章要求</Label>
@@ -322,10 +331,10 @@
             id="template-name"
             v-model="templateName"
             placeholder="请输入模板名称"
-            :maxlength="50"
+            :maxlength="100"
             class="min-h-[60px]"
           />
-          <p class="text-right text-xs text-muted-foreground">{{ templateName.length }}/50</p>
+          <p class="text-right text-xs text-muted-foreground">{{ templateName.length }}/100</p>
         </div>
       </div>
       <DialogFooter>
@@ -395,6 +404,7 @@
     @applied="handleAppliedTemplate"
     @openLibrary="openLibraryFromResult"
     @manageModel="openModelManage"
+    @refreshList="loadLeftTemplates"
   />
   <Dialog v-model="reNameVisible" className="max-w-md">
     <DialogHeader>
@@ -443,7 +453,7 @@
           <template #label>
             <span style="color:red;">*</span> 文章标题：
           </template>
-          <el-input v-model="createTemplateFrom.createTitle" placeholder="请输入文章标题" style="width: 72%" maxlength="20" show-word-limit/>
+          <el-input v-model="createTemplateFrom.createTitle" placeholder="请输入文章标题" style="width: 72%" maxlength="200" show-word-limit/>
         </el-form-item>
         <el-form-item style="margin-left: 8%">
           <template #label>
@@ -453,13 +463,13 @@
                     type="textarea"
                     resize="none"
                     :autosize="{ minRows: 3, maxRows: 4 }"
-                    maxlength="100" show-word-limit/>
+                    maxlength="300" show-word-limit/>
         </el-form-item>
         <el-form-item style="margin-left: 8%">
           <template #label>
             <span style="color:red;">*</span> 模板名称：
           </template>
-          <el-input v-model="createTemplateFrom.templateName" placeholder="请输入模板名称" style="width: 72%" maxlength="20" show-word-limit/>
+          <el-input v-model="createTemplateFrom.templateName" placeholder="请输入模板名称" style="width: 72%" maxlength="100" show-word-limit/>
         </el-form-item>
         <el-alert
           v-if="creatingFastTemplate"
@@ -503,6 +513,9 @@
                   src="./iconPng/file_pdf.png" alt="PNG Icon" class="file-icon" />
               {{fileShowName}}
               <el-progress  :percentage="percentage" :status="exception"/>
+              <div v-if="percentage === 100 && parseRetryCount > 0" style="margin-top: 8px; color: #909399; font-size: 12px;">
+                文档解析中... ({{ parseRetryCount }}/{{ MAX_PARSE_RETRY }})
+              </div>
             </div>
           </template>
         </el-upload>
@@ -639,6 +652,7 @@ const templateData = computed(() => {
     );
 });
 const templateTitle = ref('');//写作模板标题
+const isTemplateCollapsed = ref(false);//写作模板折叠状态
 const titleData = ref([{titleId:1,children:[]}]);//标题数据集
 const dialogTableVisible = ref(false);
 const gridData = ref([]);
@@ -839,7 +853,9 @@ const filteredLeftList = computed(() => {
 const loadLeftTemplates = () => {
     const parmas = {
         userId: userStore.profile.mobile,
-        templateTitle: ''
+        templateTitle: '',
+        pageNum: 1,
+        pageSize: 1000 // 获取全部，防止分页导致数据不全
     }
     allTemplateQuery(parmas).then(res => {
         tableKey.value += 1
@@ -991,11 +1007,13 @@ const selectFileList = (file_id) => {//查询文件列表
           if(res.data.fileList[i].status_cd === '1'){
             ElMessage.success('文件解析成功')
             clearInterval(timerID.value);
+            loadLeftTemplates() // 刷新左侧模板列表
             open(JSON.parse(res.data.fileList[i].title_data))
             return
           }else if(res.data.fileList[i].status_cd === '2'){
             ElMessage.error('文件解析失败')
             clearInterval(timerID.value);
+            loadLeftTemplates() // 刷新左侧模板列表
             return
           }
       }
@@ -1254,6 +1272,7 @@ const deleteAllHandleClick = (row) => {
         ElMessage.error('请求失败:'+error);
       }).finally(()=>{
         queryAllTemplate()
+        loadLeftTemplates()
       });
     }else if(row.type === 2){
       const param = {
@@ -1268,6 +1287,7 @@ const deleteAllHandleClick = (row) => {
         ElMessage.error('请求失败:'+error);
       }).finally(()=>{
         queryAllTemplate()
+        loadLeftTemplates()
       });
     }else if(row.type === 3){
       const param = {
@@ -1282,6 +1302,7 @@ const deleteAllHandleClick = (row) => {
         ElMessage.error('请求失败:'+error);
       }).finally(()=>{
         queryAllTemplate()
+        loadLeftTemplates()
       });
     }
   }).catch(() => {
@@ -1626,6 +1647,8 @@ const transformData = (data) => {
 const timerID = ref(null);
 const intervalId = ref(null);
 const exception = ref('');
+const parseRetryCount = ref(0); // 解析轮询次数
+const MAX_PARSE_RETRY = 60; // 最大轮询次数（60次 * 2秒 = 2分钟超时）
 const uploadSolutionFile = (content) => {//上传文件
     messageShown = false
   percentage.value = 0
@@ -1639,27 +1662,32 @@ const uploadSolutionFile = (content) => {//上传文件
     if (timerID.value) {
         clearInterval(timerID.value);
     }
-  intervalId.value = setInterval(() => {
-    if (percentage.value < 99) {
-      percentage.value = (percentage.value % 100) + 1;
-    } else {
-      // 当percentage达到100时，停止定时器
-      clearInterval(intervalId.value);
+  
+  uploadBusiFile(formData, {
+    onUploadProgress: (progressEvent) => {
+      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      percentage.value = percentCompleted;
+      if(percentage.value == 100){
+        exception.value = 'success'
+      }
     }
-    if(percentage.value == 100){
-      exception.value = 'success'
-    }
-  }, 10);
-  uploadBusiFile(formData).then(res => {
+  }).then(res => {
     percentage.value = 100
+      parseRetryCount.value = 0; // 重置轮询计数
       timerID.value = setInterval(() => {
+          parseRetryCount.value++;
+          if (parseRetryCount.value > MAX_PARSE_RETRY) {
+              clearInterval(timerID.value);
+              timerID.value = null;
+              ElMessage.error('文件解析超时，请稍后重试或联系管理员');
+              return;
+          }
           selectFileList(res.data.data.file_id);
       }, 2000)
       if(res.data.code == 400){
           ElMessage.warning(res.data.message);
       }else ElMessage.success('上传文件成功,文件正在解析，请稍后');
   }).catch(error => {
-    clearInterval(intervalId.value)
     exception.value = 'exception'
     console.log('上传文件失败:' + error)
       if (error.response) {
@@ -1783,6 +1811,7 @@ const createTemplateClick = () => {
                 message: '生成写作模板成功.',
                 type: 'success',
             })
+            loadLeftTemplates() // 刷新左侧列表
         }).catch(error => {
             ElMessage.error('请求失败:'+error);
         }).finally(() => {

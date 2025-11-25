@@ -1,8 +1,8 @@
 <template>
   <div :class="['w-full', wrapperClass]">
-    <div class="h-2 w-full rounded bg-muted overflow-hidden">
+    <div class="h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
       <div
-        class="h-full bg-primary transition-all duration-200"
+        class="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-300 ease-out"
         :style="{ width: Math.max(0, Math.min(100, value)) + '%' }"
       />
     </div>

@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 def build_paragraph_chain(llm: ChatOpenAI):
     """构造段落生成链，外部注入 llm（向后兼容）。"""
-    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | paragraph_generate_prompt  | llm | StrOutputParser()
+    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough(), "expected_titles": RunnablePassthrough()} | paragraph_generate_prompt  | llm | StrOutputParser()
 
 async def build_paragraph_chain_async(llm: ChatOpenAI, db: Optional[AsyncSession] = None, example_output: Optional[str] = None):
     """
@@ -39,7 +39,7 @@ async def build_paragraph_chain_async(llm: ChatOpenAI, db: Optional[AsyncSession
         配置好的 LangChain chain
     """
     prompt = await get_paragraph_generate_prompt(db=db, example_output=example_output)
-    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | prompt | llm | StrOutputParser()
+    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough(), "expected_titles": RunnablePassthrough()} | prompt | llm | StrOutputParser()
 
 async def build_paragraph_chain_async_stream(llm: ChatOpenAI, db: Optional[AsyncSession] = None, example_output: Optional[str] = None):
     """
@@ -47,7 +47,7 @@ async def build_paragraph_chain_async_stream(llm: ChatOpenAI, db: Optional[Async
     直接让上层从 chunk/AIMessageChunk 中读取 content。
     """
     prompt = await get_paragraph_generate_prompt(db=db, example_output=example_output)
-    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough()} | prompt | llm
+    return {"complete_title": RunnablePassthrough(), "last_para_content": RunnablePassthrough(), "titleNames": RunnablePassthrough(), "requirements": RunnablePassthrough(), "expected_titles": RunnablePassthrough()} | prompt | llm
 
 # headers = {
 #     "accept": "application/json",

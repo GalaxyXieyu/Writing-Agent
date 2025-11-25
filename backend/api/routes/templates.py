@@ -135,13 +135,16 @@ async def template_save(request_data: TemplateSaveRequest,db: AsyncSession = Dep
             template_type='S',
             template_desc=writingRequirement,
             status_cd='Y',
-            create_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            create_time=datetime.now().date(),
         )
         # 添加到会话并提交
         db.add(new_template)
         await db.commit()
+        await db.refresh(new_template)
         template_id = new_template.template_id
-        await save_children(db, template_id, 0, children)
+        global show_order
+        show_order = 0
+        await save_children(db, template_id, 0, children or [])
         return return_json(True,"模板数据保存成功。")
     except Exception as e:
         error_msg = f"模板保存接口发生异常: {str(e)}"
@@ -201,7 +204,9 @@ async def template_update(request_data: TemplateUpdateRequest,db: AsyncSession =
         await db.commit()
         # 更新ai_template_title表数据,先删除，再添加
         if await delete_template_title(db, templateId):
-            await save_children(db, templateId, 0, originalTemplate)
+            global show_order
+            show_order = 0
+            await save_children(db, templateId, 0, originalTemplate or [])
             return return_json(True, "模板数据更新成功。")
     except Exception as e:
         error_msg = f"模板更新接口发生异常: {str(e)}"

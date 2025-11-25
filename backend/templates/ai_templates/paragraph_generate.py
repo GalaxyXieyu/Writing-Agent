@@ -11,6 +11,7 @@ paragraph_generate_template_default = """
 2- 分析文章类别，调用专业数据，确保内容专业。
 3- 内容详细，呼应【上一章节内容】，有层次有深度。
 4- 按照【本章要求】编写每个小章节，不漏写不多写。
+5- 若提供【预期小节标题列表】，必须严格按该列表逐项写作，不新增、不少写、不更改顺序与名称。
 5- 为每个章节标号，多级标号：1.1、xxxx；1.1.1、xxxx
 参考：
     ## 1.1、xxx产品变化快
@@ -28,6 +29,7 @@ paragraph_generate_template_default = """
 ##【上一章节内容】={last_para_content}
 ##【本章标题】={titleNames}
 ##【本章要求】={requirements}
+##【预期小节标题列表】={expected_titles}
 {exampleOutput}
 """
 
@@ -74,4 +76,3 @@ async def get_paragraph_generate_prompt(db: Optional[AsyncSession] = None, examp
 
 # 保持向后兼容：直接使用默认模板创建 PromptTemplate
 paragraph_generate_prompt = PromptTemplate.from_template(paragraph_generate_template_default)
-

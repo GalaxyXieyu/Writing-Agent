@@ -2,7 +2,7 @@ name: Writing-Agent
 
 services:
   mysql-init:
-    image: alpine:latest
+    image: docker.m.daocloud.io/library/alpine:latest
     container_name: mysql-init
     volumes:
       - ./mysql_init:/source:ro
@@ -13,7 +13,7 @@ services:
       - writingagent-network
 
   mysql:
-    image: mysql:8.0
+    image: docker.m.daocloud.io/library/mysql:8.0
     container_name: mysql
     restart: always
     ports:
@@ -43,7 +43,7 @@ services:
       - writingagent-network
 
   redis:
-    image: redis:7-alpine
+    image: docker.m.daocloud.io/library/redis:7-alpine
     container_name: redis
     restart: always
     ports:
