@@ -1442,7 +1442,10 @@ const pauseCreate = () => {
 }
 const createArticle = () => {  //调用生成文章接口
   const modelStore = useModelConfigStore();
-  if (!modelStore.currentOrFirst) {
+  // 优先校验用户当前选择的模型，如果没有选择，再校验默认模型
+  const effectiveModelId = currentModelId.value || modelStore.currentOrFirst;
+  
+  if (!effectiveModelId) {
     ElMessage.error('请先在模型配置中添加或选择一个模型');
     return;
   }
@@ -1492,10 +1495,14 @@ const createArticle = () => {  //调用生成文章接口
         // - AI 生成模板: id
         // - 文件模板: 无模板 id，仅传 null
         const rawTplId = selectTemplateInfo.value?.template_id ?? selectTemplateInfo.value?.id ?? null
+        // 获取有效的 modelId
+        const effectiveModelId = currentModelId.value || useModelConfigStore().currentOrFirst;
+        
         const templateTitleParam1 = {
             "outline": parameter,
             "templateId": rawTplId != null ? String(rawTplId) : null,
-            "userId": userStore.profile.mobile
+            "userId": userStore.profile.mobile,
+            "modelId": effectiveModelId // 传递 modelId
         }
         // generateArticlesRef.value.createArticle(templateTitleParam1)
         richTextEditorRefs.value.createArticle(templateTitleParam1)

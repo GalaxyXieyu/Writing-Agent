@@ -24,12 +24,19 @@ class ChapterGenerationState:
         self.outline = outline
         self.current_chapter_index = 0
         self.generated_contents = []  # 使用列表保存每一章节的内容
+        # 调试日志：确认传入的 outline 结构
+        children = getattr(outline, 'children', None)
+        mylog.info(f"[ChapterGenerationState] 初始化, titleName={getattr(outline, 'titleName', 'N/A')}, children_count={len(children) if children else 0}, children_type={type(children)}")
 
     def next_chapter(self) -> Optional[OutlineItem]:
-        if self.current_chapter_index < len(self.outline.children):
-            chapter = self.outline.children[self.current_chapter_index]
+        children = getattr(self.outline, 'children', None) or []
+        mylog.info(f"[next_chapter] current_index={self.current_chapter_index}, children_count={len(children)}")
+        if self.current_chapter_index < len(children):
+            chapter = children[self.current_chapter_index]
             self.current_chapter_index += 1
+            mylog.info(f"[next_chapter] 返回章节: {getattr(chapter, 'titleName', 'N/A')}")
             return chapter
+        mylog.info("[next_chapter] 没有更多章节")
         return None
 
 """生成、优化流程的通用空值防御与日志增强"""
@@ -60,7 +67,19 @@ async def generate_article(state: ChapterGenerationState, llm, db=None) -> Async
     complete_content: str = ""  # 用于存储完整的返回内容
     # 提取最高级别的标题（防御 None）
     highest_level_title = getattr(state.outline, "titleName", None) or ""
-    # 去除冗余日志输出
+    
+    # 检查是否只有根节点（没有子章节）
+    root_children = getattr(state.outline, 'children', None) or []
+    if not root_children:
+        # 只有一个章节：直接生成根节点内容
+        mylog.info(f"[generate_article] 只有根节点，直接生成: {highest_level_title}")
+        yield "# " + highest_level_title + "\n"
+        async for token in generate_chapter(state.outline, "", highest_level_title, llm, db=db):
+            tok = token or ""
+            complete_content += tok
+            yield tok
+        state.generated_contents.append(complete_content or "")
+        return
     
     while True:
         chapter = state.next_chapter()

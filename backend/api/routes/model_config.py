@@ -21,6 +21,8 @@ from services.model_config import (
     delete_model_config,
     set_default_model,
     get_default_model,
+    list_visible_models,
+    model_to_dict,
 )
 from ai.llm.llm_factory import LLMFactory
 from langchain_openai import ChatOpenAI
@@ -71,10 +73,77 @@ async def list_api(
         return JSONResponse(status_code=200, content=jsonable_encoder({
             "code": 401, "type": "error", "message": "未登录或无效token", "data": None
         }))
-    if not getattr(user, 'is_admin', 0):
-        user_id = getattr(user, 'user_id', None)
-    q = ModelConfigQuery(page=page, page_size=page_size, user_id=user_id, name=name, model=model, status_cd=status_cd)
-    rows, total = await list_model_configs(db, q)
+    current_user_id = getattr(user, 'user_id', None)
+    is_admin = bool(getattr(user, 'is_admin', 0))
+    
+    # 使用可见性过滤：管理员看所有，普通用户看公开的+指定可见的+自己创建的
+    rows_dict, total = await list_visible_models(
+        db,
+        user_id=current_user_id,
+        is_admin=is_admin,
+        page=page,
+        page_size=page_size
+    )
+    return JSONResponse(status_code=200, content=jsonable_encoder({
+        "code": 200,
+        "type": "success",
+        "message": "查询成功",
+        "data": {
+            "list": rows_dict,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "pages": math.ceil(total / page_size) if page_size else 1
+        }
+    }))
+
+
+@router.get("/default")
+async def get_default_api(user_id: Optional[str] = None, db: AsyncSession = Depends(get_async_db)):
+    obj = await get_default_model(db, user_id=user_id)
+    if not obj:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 404, "type": "error", "message": "未找到默认模型", "data": None
+        }))
+    return JSONResponse(status_code=200, content=jsonable_encoder({
+        "code": 200, "type": "success", "message": "查询成功", "data": model_to_dict(obj)
+    }))
+
+
+@router.get("/visible")
+async def list_visible_api(
+    page: int = 1,
+    page_size: int = 100,
+    db: AsyncSession = Depends(get_async_db),
+    authorization: str = Header(None),
+    token: str = None
+):
+    """
+    获取当前用户可见的模型列表。
+    用于普通用户选择模型时使用，只返回用户有权限使用的模型。
+    """
+    tok = _extract_token(authorization, token)
+    if not tok:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "缺少token", "data": None
+        }))
+    user = await get_current_user(db, tok)
+    if not user:
+        return JSONResponse(status_code=200, content=jsonable_encoder({
+            "code": 401, "type": "error", "message": "未登录或无效token", "data": None
+        }))
+    
+    user_id = getattr(user, 'user_id', None)
+    is_admin = bool(getattr(user, 'is_admin', 0))
+    
+    rows, total = await list_visible_models(
+        db,
+        user_id=user_id,
+        is_admin=is_admin,
+        page=page,
+        page_size=page_size
+    )
+    
     return JSONResponse(status_code=200, content=jsonable_encoder({
         "code": 200,
         "type": "success",
@@ -192,18 +261,6 @@ async def set_default_api(model_id: int, db: AsyncSession = Depends(get_async_db
         }))
     return JSONResponse(status_code=200, content=jsonable_encoder({
         "code": 200, "type": "success", "message": "设置默认成功", "data": obj
-    }))
-
-
-@router.get("/default")
-async def get_default_api(user_id: Optional[str] = None, db: AsyncSession = Depends(get_async_db)):
-    obj = await get_default_model(db, user_id=user_id)
-    if not obj:
-        return JSONResponse(status_code=200, content=jsonable_encoder({
-            "code": 404, "type": "error", "message": "未找到默认模型", "data": None
-        }))
-    return JSONResponse(status_code=200, content=jsonable_encoder({
-        "code": 200, "type": "success", "message": "查询成功", "data": obj
     }))
 
 

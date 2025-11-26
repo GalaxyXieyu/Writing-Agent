@@ -98,7 +98,7 @@ class TemplateChild(BaseModel):
     # 新增：章节级参考输出（可选），用于指导本章节生成
     referenceOutput: Optional[str] = None
     statusCd: Optional[str] = None
-    children: Optional[List['TemplateChild']] = Field(default=None, allow_none=True)
+    children: Optional[List['TemplateChild']] = Field(default=None)
 
 
 class TemplateData(BaseModel):
@@ -111,7 +111,7 @@ class TemplateData(BaseModel):
     # 新增：章节级参考输出（可选）
     referenceOutput: Optional[str] = None
     statusCd: Optional[str] = None
-    children: Optional[List[TemplateChild]] = Field(default=None, allow_none=True)
+    children: Optional[List[TemplateChild]] = Field(default=None)
 
 
 class TemplateContentResponse(BaseModel):

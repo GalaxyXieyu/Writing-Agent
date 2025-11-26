@@ -33,5 +33,9 @@ export const modelConfigApi = {
     if (userId) params.user_id = userId;
     // 可选 body：用于新增/编辑前临时验证
     return http({ method: 'POST', url: `${BASE}/verify`, params, data: body });
+  },
+  // 获取当前用户可见的模型列表（用于普通用户选择模型）
+  getVisibleList(params) {
+    return http({ method: 'GET', url: `${BASE}/visible`, params });
   }
 }

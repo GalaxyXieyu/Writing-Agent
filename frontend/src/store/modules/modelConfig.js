@@ -48,6 +48,17 @@ export const useModelConfigStore = defineStore('modelConfig', {
       const { data } = await modelConfigApi.getDefault(userId)
       this.defaultModel = data || null
     },
+    // 获取当前用户可见的模型列表（用于普通用户选择模型）
+    async fetchVisibleList(params = {}) {
+      this.loading = true
+      try {
+        const { data } = await modelConfigApi.getVisibleList({ page: 1, page_size: 100, ...params })
+        this.modelList = data?.list || []
+        this.pagination.total = data?.total || 0
+      } finally {
+        this.loading = false
+      }
+    },
   },
   getters: {
     currentOrFirst(state) {

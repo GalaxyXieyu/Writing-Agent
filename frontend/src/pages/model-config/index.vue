@@ -24,6 +24,7 @@
               <TableHead>模型</TableHead>
               <TableHead>Base URL</TableHead>
               <TableHead class="w-[80px]">默认</TableHead>
+              <TableHead v-if="isAdmin" class="w-[100px]">可见性</TableHead>
               <TableHead class="w-[320px]">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -37,6 +38,10 @@
                 <Badge v-if="row.is_default" variant="default">是</Badge>
                 <span v-else class="text-muted-foreground">否</span>
               </TableCell>
+              <TableCell v-if="isAdmin">
+                <Badge v-if="row.is_public" variant="secondary">公开</Badge>
+                <Badge v-else variant="outline">指定用户</Badge>
+              </TableCell>
               <TableCell>
                 <div class="flex gap-2">
                   <Button variant="outline" size="sm" @click="verify(row)">验证</Button>
@@ -47,7 +52,7 @@
               </TableCell>
             </TableRow>
             <TableRow v-if="list.length === 0">
-              <TableCell colspan="6" class="text-center text-muted-foreground py-8">
+              <TableCell :colspan="isAdmin ? 7 : 6" class="text-center text-muted-foreground py-8">
                 暂无数据
               </TableCell>
             </TableRow>
@@ -131,6 +136,39 @@
           <Label for="is_default">设为默认</Label>
           <Switch id="is_default" v-model="form.is_default" />
         </div>
+        <!-- 可见性设置（仅管理员可见） -->
+        <template v-if="isAdmin">
+          <div class="border-t pt-4 mt-4">
+            <div class="text-sm font-medium mb-3">可见性设置</div>
+            <div class="flex items-center gap-2 mb-3">
+              <Label for="is_public">公开可见</Label>
+              <Switch id="is_public" v-model="form.is_public" />
+              <span class="text-xs text-muted-foreground">开启后所有用户可见</span>
+            </div>
+            <div v-if="!form.is_public" class="space-y-2">
+              <Label>指定可见用户</Label>
+              <el-select
+                v-model="form.visible_to_users"
+                multiple
+                filterable
+                remote
+                reserve-keyword
+                placeholder="搜索并选择用户"
+                :remote-method="searchUsers"
+                :loading="userSearchLoading"
+                class="w-full"
+              >
+                <el-option
+                  v-for="u in userOptions"
+                  :key="u.user_id"
+                  :label="`${u.name || u.username} (${u.phone || u.user_id})`"
+                  :value="u.user_id"
+                />
+              </el-select>
+              <div class="text-xs text-muted-foreground">只有选中的用户可以看到并使用该模型</div>
+            </div>
+          </div>
+        </template>
       </div>
       <DialogFooter>
         <Button variant="outline" @click="visible = false">取消</Button>
@@ -141,9 +179,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useModelConfigStore } from '@/store/modules/modelConfig'
+import { useUserStore } from '@/store/modules/user'
+import { adminListUsers } from '@/service/api.admin'
 import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardTitle from '@/components/ui/CardTitle.vue'
@@ -171,6 +211,7 @@ import PaginationPrevious from '@/components/ui/PaginationPrevious.vue'
 import PaginationNext from '@/components/ui/PaginationNext.vue'
 
 const store = useModelConfigStore()
+const userStore = useUserStore()
 const q = ref({ name: '' })
 const page = ref(1)
 const pageSize = ref(20)
@@ -179,7 +220,14 @@ const list = ref([])
 const loading = ref(false)
 
 const visible = ref(false)
-const form = ref({ id: null, name: '', model: '', base_url: '', api_key: '', temperature: 0.2, max_tokens: null, is_default: false })
+const form = ref({ id: null, name: '', model: '', base_url: '', api_key: '', temperature: 0.2, max_tokens: null, is_default: false, is_public: true, visible_to_users: [] })
+
+// 管理员状态
+const isAdmin = computed(() => !!userStore.profile?.is_admin)
+
+// 用户搜索相关
+const userSearchLoading = ref(false)
+const userOptions = ref([])
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
 
@@ -223,13 +271,60 @@ const refresh = async () => {
   }
 }
 
-const openEdit = (row) => {
+const openEdit = async (row) => {
   if (row) {
-    form.value = { ...row }
+    // 处理 visible_to_users：可能是 JSON 字符串或数组
+    let visibleUsers = row.visible_to_users || []
+    if (typeof visibleUsers === 'string') {
+      try {
+        visibleUsers = JSON.parse(visibleUsers)
+      } catch (e) {
+        visibleUsers = []
+      }
+    }
+    form.value = { 
+      ...row,
+      visible_to_users: visibleUsers
+    }
+    // 如果有已选用户，需要加载这些用户信息到选项中
+    if (form.value.visible_to_users?.length > 0 && isAdmin.value) {
+      await loadSelectedUsers(form.value.visible_to_users)
+    }
   } else {
-    form.value = { id: null, name: '', model: '', base_url: '', api_key: '', temperature: 0.2, max_tokens: null, is_default: false }
+    form.value = { id: null, name: '', model: '', base_url: '', api_key: '', temperature: 0.2, max_tokens: null, is_default: false, is_public: true, visible_to_users: [] }
   }
   visible.value = true
+}
+
+// 搜索用户
+const searchUsers = async (kw) => {
+  if (!kw) {
+    userOptions.value = []
+    return
+  }
+  userSearchLoading.value = true
+  try {
+    const res = await adminListUsers({ kw, pageNum: 1, pageSize: 20 })
+    userOptions.value = res?.data?.list || []
+  } catch (e) {
+    userOptions.value = []
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
+// 加载已选用户信息
+const loadSelectedUsers = async (userIds) => {
+  if (!userIds?.length) return
+  try {
+    // 通过搜索接口获取用户信息
+    const res = await adminListUsers({ pageNum: 1, pageSize: 100 })
+    const allUsers = res?.data?.list || []
+    // 过滤出已选用户
+    userOptions.value = allUsers.filter(u => userIds.includes(u.user_id))
+  } catch (e) {
+    // 忽略错误
+  }
 }
 
 const submit = async () => {

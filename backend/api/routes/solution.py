@@ -1,27 +1,30 @@
 import asyncio
 import json
 import threading
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from models.solution import (ChapterGenerationRequest, ArticleGenerationRequest, 
                             GenerationResponse, StreamGenerationResponse, AiSolutionSave)
-from models.templates import TemplateContentResponse
-from services.solution import generate_chapter, ChapterGenerationState, generate_article, optimize_content
+from models.solution import (
+    ArticleGenerationRequest, 
+    GenerationResponse,
+    TemplateData
+)
+from services.solution import generate_article, ChapterGenerationState
 from ai.llm.llm_factory import LLMFactory
-from fastapi.responses import StreamingResponse
-from starlette.background import BackgroundTask
-from datetime import datetime, timedelta
 from utils.logger import mylog
+from config import AsyncSessionLocal, get_async_db
 from fastapi import FastAPI
+from starlette.background import BackgroundTask
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, Integer, Text, Date, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
-from config import get_async_db
 from api.routes.file import select_file_by_title
 # 注：此前从 templates 路由导入的函数 `title_query_by_templateName` 并不存在且未使用，
 # 会导致应用在启动阶段 ImportError，从而阻断所有接口，包括生成报告接口。
@@ -154,23 +157,35 @@ async def generate_article_api(request: ArticleGenerationRequest,db: AsyncSessio
             "code": 400, "type": "error", "message": "缺少 modelId 参数", "data": None
         }))
 
-    llm = await LLMFactory.get_llm_by_id(db, request.modelId)
-    if not llm:
-        return JSONResponse(status_code=200, content=jsonable_encoder({
-            "code": 404, "type": "error", "message": "未找到可用模型，请先配置", "data": None
-        }))
-
+    # 注意：这里不要使用 Depends(get_async_db) 注入的 session 传给 streaming response
+    # 因为 Depends 的 session 会在路由函数返回时关闭，而 streaming 是在之后进行的
+    
     async def generate():
-        # try:
-            state = ChapterGenerationState(request.outline)
-            async for content in generate_article(state, llm, db=db):
-                yield format_sse(content)
-                await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
-            yield format_sse("", is_end=True)
-    #     finally:
-    #         request_in_progress[client_ip] = False
-    #         mylog.info(f"请求完成: {client_ip}")
-    # mylog.info(f"开始生成文章: {client_ip}")
+        mylog.info("[generate] 开始生成文章流...")
+        async with AsyncSessionLocal() as session:
+            try:
+                # 在生成器内部获取 LLM，确保 session 有效
+                llm = await LLMFactory.get_llm_by_id(session, request.modelId)
+                if not llm:
+                    yield format_sse("未找到可用模型，请先配置", is_end=True)
+                    return
+
+                state = ChapterGenerationState(request.outline)
+                mylog.info(f"[generate] ChapterGenerationState 创建完成")
+                
+                async for content in generate_article(state, llm, db=session):
+                    mylog.info(f"[generate] 生成内容片段: {content[:50] if content else 'empty'}...")
+                    yield format_sse(content)
+                    await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
+                    
+                mylog.info("[generate] 生成完成，发送结束标记")
+                yield format_sse("", is_end=True)
+            except Exception as e:
+                mylog.error(f"[generate] 生成过程中出错: {e}")
+                import traceback
+                mylog.error(traceback.format_exc())
+                yield format_sse(f"生成出错: {str(e)}", is_end=True)
+
     return StreamingResponse(
         generate(),
         media_type="text/event-stream; charset=utf-8",

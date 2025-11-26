@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, List
+import json
 
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from models.database import Base
 
 
@@ -20,6 +21,8 @@ class AiModelConfig(Base):
     temperature = Column(String(16), nullable=True)  # 简化为字符串存储，便于直写
     max_tokens = Column(Integer, nullable=True)
     is_default = Column(Boolean, nullable=False, default=False)
+    is_public = Column(Boolean, nullable=False, default=True)  # 是否公开可见
+    visible_to_users = Column(Text, nullable=True)  # 可见用户ID列表，JSON数组格式
     status_cd = Column(String(1), nullable=False, default='Y')  # Y/N
     remark = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -37,6 +40,8 @@ class ModelConfigBase(BaseModel):
     temperature: Optional[float] = Field(default=0.2, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)
     is_default: Optional[bool] = Field(default=False)
+    is_public: Optional[bool] = Field(default=True, description="是否公开可见")
+    visible_to_users: Optional[List[str]] = Field(default=None, description="可见用户ID列表")
     status_cd: Optional[Literal['Y', 'N']] = Field(default='Y')
     remark: Optional[str] = None
 
@@ -53,6 +58,8 @@ class ModelConfigUpdate(BaseModel):
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)
     is_default: Optional[bool] = None
+    is_public: Optional[bool] = None
+    visible_to_users: Optional[List[str]] = None
     status_cd: Optional[Literal['Y', 'N']] = None
     remark: Optional[str] = None
 
@@ -76,6 +83,8 @@ class ModelConfigResponse(BaseModel):
     temperature: Optional[float]
     max_tokens: Optional[int]
     is_default: bool
+    is_public: bool
+    visible_to_users: Optional[List[str]] = None
     status_cd: str
     remark: Optional[str]
     created_at: datetime

@@ -32,7 +32,8 @@ watch(() => props.modelValue, v => innerValue.value = v)
 
 const refresh = async () => {
   loading.value = true
-  await store.fetchList()
+  // 使用 fetchVisibleList 获取当前用户可见的模型列表
+  await store.fetchVisibleList()
   list.value = store.modelList
   loading.value = false
   if (!innerValue.value && store.currentOrFirst) {

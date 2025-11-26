@@ -437,9 +437,13 @@ const createArticle = (templateTitleParam1) => {
     renderScheduled = false;
     loading.value = true;
     isCreate.value = true;
+    
+    // 优先使用参数中的 modelId
+    const modelId = templateTitleParam1.modelId || useModelConfigStore().currentOrFirst;
+    
     const chatPayload = {
         method: 'POST',
-        body: JSON.stringify({...templateTitleParam1, modelId: useModelConfigStore().currentOrFirst}),
+        body: JSON.stringify({...templateTitleParam1, modelId}),
         headers: {
             'Content-Type': 'application/json',
         },
