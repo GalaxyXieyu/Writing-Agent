@@ -30,6 +30,7 @@ class AiTemplateTitle(Base):
     title_name = Column(String(255), comment='标题名称')
     show_order = Column(Integer, comment='顺序')
     writing_requirement = Column(String(2000), comment='写作要求')
+    reference_output = Column(Text, nullable=True, comment='参考输出内容')
     status_cd = Column(String(1), comment='有效性，Y有效，N无效')
 
 

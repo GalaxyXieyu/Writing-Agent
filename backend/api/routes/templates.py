@@ -171,7 +171,8 @@ async def save_children(db :AsyncSession,template_id: int, parent_id: int, child
             parent_id=parent_id,
             title_name=child['titleName'],
             show_order=show_order,
-            writing_requirement=child['writingRequirement'],
+            writing_requirement=child.get('writingRequirement'),
+            reference_output=child.get('referenceOutput'),
             status_cd='Y'
         )
         db.add(node)  # 添加到会话中
@@ -322,6 +323,7 @@ def build_tree(data):
             "titleName": item.title_name,
             "showOrder": item.show_order,
             "writingRequirement": item.writing_requirement,
+            "referenceOutput": item.reference_output,
             "statusCd": item.status_cd,
             "children": item.children
         }

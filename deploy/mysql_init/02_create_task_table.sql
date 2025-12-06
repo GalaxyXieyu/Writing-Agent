@@ -14,7 +14,22 @@ CREATE TABLE IF NOT EXISTS ai_task (
   INDEX idx_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步任务表';
 
--- 若 ai_create_template 表缺少 example_output 列则追加（compose 首启时幂等）
-ALTER TABLE ai_create_template 
-  ADD COLUMN IF NOT EXISTS example_output TEXT NULL COMMENT '示例输出内容';
+-- 创建模板标题表
+CREATE TABLE IF NOT EXISTS ai_template_title (
+  title_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '标题编号',
+  template_id BIGINT COMMENT '模板编号',
+  parent_id BIGINT COMMENT '父标题编号',
+  title_name VARCHAR(255) COMMENT '标题名称',
+  show_order INT COMMENT '顺序',
+  writing_requirement VARCHAR(2000) COMMENT '写作要求',
+  reference_output TEXT NULL COMMENT '参考输出内容',
+  status_cd VARCHAR(1) COMMENT '有效性，Y有效，N无效',
+  INDEX idx_template_id (template_id),
+  INDEX idx_parent_id (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板标题表';
 
+-- 注意：MySQL 8.0 不支持 ADD COLUMN IF NOT EXISTS
+-- 初始化脚本仅在首次启动执行，CREATE TABLE IF NOT EXISTS 已包含所有字段
+-- 若需兼容旧数据，请手动执行:
+-- ALTER TABLE ai_create_template ADD COLUMN example_output TEXT NULL COMMENT '示例输出内容';
+-- ALTER TABLE ai_template_title ADD COLUMN reference_output TEXT NULL COMMENT '参考输出内容';
