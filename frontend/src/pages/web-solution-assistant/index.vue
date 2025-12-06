@@ -1426,16 +1426,19 @@ const pauseCreate = () => {
         type: 'warning',
       confirmButtonClass: 'my-confirmButtonClass-class',
     }).then(() => {
-      // 子组件通过 defineExpose 暴露了 isCreate/isPause（ref），此处需访问其 .value
-      if (richTextEditorRefs.value) {
-        if (richTextEditorRefs.value.isCreate) richTextEditorRefs.value.isCreate.value = false
-        if (richTextEditorRefs.value.isPause) richTextEditorRefs.value.isPause.value = true
+      // 直接调用子组件的 pauseGeneration 方法
+      if (richTextEditorRefs.value && richTextEditorRefs.value.pauseGeneration) {
+        richTextEditorRefs.value.pauseGeneration();
       }
-        isCreate.value=!isCreate.value
+      isCreate.value = false;
+      ElMessage({
+        type: 'success',
+        message: '已暂停生成'
+      });
     }).catch(() => {
         ElMessage({
             type: 'info',
-            message: '取消成功'
+            message: '取消暂停'
         });
     });
 

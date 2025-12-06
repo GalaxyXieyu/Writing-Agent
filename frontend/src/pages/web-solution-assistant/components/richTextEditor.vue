@@ -581,8 +581,22 @@ watch(() => props.initialHtml, (val) => {
     }
 });
 
+// 暂停生成方法
+const pauseGeneration = () => {
+    isPause.value = true;
+    isCreate.value = false;
+    if (ctrl) {
+        try {
+            ctrl.abort();
+        } catch (e) {
+            console.error('中止请求失败:', e);
+        }
+    }
+};
+
 defineExpose({
     createArticle,
+    pauseGeneration,
     isPause,
     isCreate,
     // 手动设置 HTML，供详情页直接注入内容
