@@ -76,7 +76,7 @@
             placeholder="请输入提示词内容"
           />
           <div class="text-xs text-gray-500 leading-relaxed dark:text-gray-400">
-            支持的变量：<code class="text-brand bg-brand/10 px-1 rounded">{titleName}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{writingRequirement}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{exampleOutput}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{complete_title}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{last_para_content}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{titleNames}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{requirements}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{original_template}</code>
+            支持的变量：<code class="text-brand bg-brand/10 px-1 rounded">{titleName}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{writingRequirement}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{exampleOutput}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{complete_title}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{last_para_content}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{titleNames}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{requirements}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{expected_titles}</code>, <code class="text-brand bg-brand/10 px-1 rounded">{original_template}</code>
           </div>
         </div>
         <div class="flex items-center gap-3">
