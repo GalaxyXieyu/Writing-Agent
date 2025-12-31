@@ -1,0 +1,14 @@
+
+> writingagent-frontend@0.0.0 dev /Volumes/DATABASE/code/business/Writing-Agent/frontend
+> vite
+
+🚀 ~ env: http://localhost:29847
+
+  VITE v3.2.7  ready in 768 ms
+
+  ➜  Local:   http://localhost:8081/web/
+  ➜  Network: http://192.168.5.192:8081/web/
+  ➜  Network: http://188.5.1.65:8081/web/
+  ➜  Network: http://198.18.0.1:8081/web/
+(node:21996) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
