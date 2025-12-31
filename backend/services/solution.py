@@ -62,76 +62,123 @@ def generate_writing_requirements(chapter: OutlineItem) -> str:
 
 
 
+# 阿拉伯数字转中文数字
+def to_chinese_numeral(num: int) -> str:
+    """将阿拉伯数字转换为中文数字（1-99）"""
+    chinese_nums = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+    if num <= 10:
+        return chinese_nums[num]
+    elif num < 20:
+        return f"十{chinese_nums[num - 10]}" if num > 10 else "十"
+    elif num < 100:
+        tens = num // 10
+        ones = num % 10
+        if ones == 0:
+            return f"{chinese_nums[tens]}十"
+        return f"{chinese_nums[tens]}十{chinese_nums[ones]}"
+    return str(num)
+
+
+# 生成 Markdown 标题（根据层级自动添加 # 数量和编号）
+def generate_markdown_title(title: str, level: int, numbering: str) -> str:
+    """
+    生成 Markdown 格式的标题
+    level: 1=一级(##), 2=二级(###), 3=三级(####)
+    numbering: 如 "1"、"1.1"、"2.1.1"
+    
+    格式规范：
+    - 一级标题：## 一、标题名
+    - 二级标题：### 1.1 标题名
+    - 三级标题：#### 1.1.1 标题名
+    """
+    hashes = "#" * (level + 1)  # level 1 -> ##, level 2 -> ###, level 3 -> ####
+    
+    if level == 1:
+        # 一级标题：用中文数字，如 "一、"
+        num = int(numbering) if numbering.isdigit() else 1
+        chinese_num = to_chinese_numeral(num)
+        return f"{hashes} {chinese_num}、{title}\n\n"
+    else:
+        # 二级及以下：用阿拉伯数字，如 "1.1"、"1.1.1"
+        return f"{hashes} {numbering} {title}\n\n"
+
+
+# 递归生成章节内容
+async def generate_outline_recursive(
+    node: OutlineItem, 
+    llm, 
+    db, 
+    highest_level_title: str,
+    last_para_content: str,
+    level: int,
+    numbering: str
+) -> AsyncGenerator[str, None]:
+    """
+    递归遍历大纲，自动生成标题和内容
+    - level: 当前层级 (1=一级章节, 2=二级, 3=三级)
+    - numbering: 当前编号 (如 "1", "1.1", "1.1.1")
+    """
+    title = getattr(node, "titleName", None) or ""
+    children = getattr(node, "children", None) or []
+    
+    # 1. 代码自动输出 Markdown 标题
+    yield generate_markdown_title(title, level, numbering)
+    
+    # 2. 大模型生成该章节的内容（不含标题）
+    async for token in generate_chapter_content(node, last_para_content, highest_level_title, llm, db=db):
+        yield token or ""
+    
+    yield "\n\n"
+    
+    # 3. 递归处理子章节
+    current_content = ""
+    for idx, child in enumerate(children, start=1):
+        child_numbering = f"{numbering}.{idx}" if numbering else str(idx)
+        async for token in generate_outline_recursive(
+            child, llm, db, highest_level_title, 
+            current_content[-2000:] if len(current_content) > 2000 else current_content,
+            level + 1, 
+            child_numbering
+        ):
+            current_content += token or ""
+            yield token
+
+
 # 完整章节生成
 async def generate_article(state: ChapterGenerationState, llm, db=None) -> AsyncGenerator[str, None]:
-    complete_content: str = ""  # 用于存储完整的返回内容
-    # 提取最高级别的标题（防御 None）
+    """
+    生成完整文章：
+    1. 代码自动生成 Markdown 标题（## 1. xxx, ### 1.1 xxx）
+    2. 大模型只生成内容
+    """
     highest_level_title = getattr(state.outline, "titleName", None) or ""
-    
-    # 检查是否只有根节点（没有子章节）
     root_children = getattr(state.outline, 'children', None) or []
+    
+    # 输出文章总标题
+    yield f"# {highest_level_title}\n\n"
+    
+    # 如果没有子章节，直接生成根节点内容
     if not root_children:
-        # 只有一个章节：直接生成根节点内容
-        mylog.info(f"[generate_article] 只有根节点，直接生成: {highest_level_title}")
-        yield "# " + highest_level_title + "\n"
-        async for token in generate_chapter(state.outline, "", highest_level_title, llm, db=db):
-            tok = token or ""
-            complete_content += tok
-            yield tok
-        state.generated_contents.append(complete_content or "")
+        async for token in generate_chapter_content(state.outline, "", highest_level_title, llm, db=db):
+            yield token or ""
         return
     
-    while True:
-        chapter = state.next_chapter()
-        if not chapter:
-            break
-        
-        # 获取上一章节的内容
-        if state.generated_contents:
-            last_para_content = state.generated_contents[-1] or ""
-            # 统计 token 数量
-            token_count = len(last_para_content)
-            # 如果超过 2000 个 token，则截断最后 2000 个 token
-            if token_count > 2000:
-                last_para_content = last_para_content[-2000:]
-        else:
-            last_para_content = ""
-        
-        # 打印调试信息，确保每章的标题和要求被正确传入
-        title_safe = getattr(chapter, "titleName", None) or ""
-        req_safe = getattr(chapter, "writingRequirement", None) or ""
-        # 标题输出防御 None
-        yield "# " + title_safe + "\n"
-        # 处理每个二级章节
-        children = getattr(chapter, "children", None) or []
-        if not children:
-            async for token in generate_chapter(chapter, last_para_content, highest_level_title, llm, db=db):
-                tok = token or ""
-                complete_content += tok  # 累加到完整内容中
-                yield tok
-        else:
-            for subchapter in children:
-                subchapter_content: str = ""
-                async for token in generate_chapter(subchapter, last_para_content, highest_level_title, llm, db=db):
-                    tok = token or ""
-                    subchapter_content += tok
-                    complete_content += tok  # 累加到完整内容中
-                    yield tok
-                
-                # 每个二级章节之间返回一个换行符
-                yield "\n\n"
-                
-                # 更新 last_para_content 为当前子章节的内容
-                last_para_content = subchapter_content
-        
-        # 将当前章节的内容添加到 generated_contents 列表中
-        state.generated_contents.append(complete_content or "")
-    
-    # 去除冗余日志输出
+    # 遍历一级章节
+    last_content = ""
+    for idx, chapter in enumerate(root_children, start=1):
+        numbering = str(idx)
+        async for token in generate_outline_recursive(
+            chapter, llm, db, highest_level_title,
+            last_content[-2000:] if len(last_content) > 2000 else last_content,
+            level=1,
+            numbering=numbering
+        ):
+            last_content += token or ""
+            yield token
 
 
-# 单个章节生成
-async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest_level_title: str, llm, db=None) -> AsyncGenerator[str, None]:
+# 单个章节内容生成（只生成内容，不含标题）
+async def generate_chapter_content(chapter: OutlineItem, last_para_content: str, highest_level_title: str, llm, db=None) -> AsyncGenerator[str, None]:
     # 入参兼容与结构拼装
     writing_requirements = generate_writing_requirements(chapter)
     structure = f"Writing Requirement: {writing_requirements}"
@@ -143,15 +190,24 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
         children_titles = []
     expected_titles = "\n".join([f"- {t}" for t in children_titles if t])
 
+    # 简化日志：只在首次生成时输出关键信息
+    chapter_title = getattr(chapter, 'titleName', 'N/A')
+    
+    # 获取参考输出
+    example_output = getattr(chapter, "exampleOutput", None)
+    if not example_output:
+        example_output = getattr(chapter, "referenceOutput", None)
+    
+    # 调试日志：检查参考输出是否存在
+    has_ref = bool(example_output and str(example_output).strip())
+    mylog.info(f"📝 [章节生成] {chapter_title} (db={'有' if db else '无'}, 参考输出={'有' if has_ref else '无'})")
+
     try:
         # 使用异步函数构建 chain，支持从数据库读取提示词
         from ai.agents.paragraph_writer import build_paragraph_chain_async
+        from templates.ai_templates.paragraph_generate import get_paragraph_generate_prompt
+        
         llm_no_usage = llm.bind(stream_options={"include_usage": False})
-        # 统一使用 exampleOutput 作为章节级示例输出的入参名称；
-        # 前端 TitleInput.vue 使用 referenceOutput 字段，后端此处对接为 exampleOutput。
-        example_output = getattr(chapter, "exampleOutput", None)
-        if not example_output:
-            example_output = getattr(chapter, "referenceOutput", None)
         chain = await build_paragraph_chain_async(llm_no_usage, db=db, example_output=example_output)
         inputs = {
             "complete_title": highest_level_title or "",
@@ -160,6 +216,12 @@ async def generate_chapter(chapter: OutlineItem, last_para_content: str, highest
             "requirements": writing_requirements or "",
             "expected_titles": expected_titles or ""
         }
+        
+        # 打印完整提示词（用于调试）
+        prompt_template = await get_paragraph_generate_prompt(db=db, example_output=example_output)
+        full_prompt = prompt_template.format(**inputs)
+        mylog.info(f"{'='*60}\n📜 [完整提示词] 章节: {chapter_title}\n{'-'*60}\n{full_prompt}\n{'='*60}")
+
         try:
             # 直接使用 astream 返回的增量结果（AIMessageChunk 或字符串）
             async for chunk in chain.astream(inputs):

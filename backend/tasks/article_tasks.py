@@ -11,10 +11,11 @@ from models.templates import TemplateChild as OutlineItem
 from models.task import AiTask
 from config import AsyncSessionLocal
 from utils.logger import mylog
+from ai.llm.llm_factory import LLMFactory
 
 
 @celery_app.task(bind=True)
-def generate_article_task(self, task_id: str, outline_dict: dict, user_id: str = None):
+def generate_article_task(self, task_id: str, outline_dict: dict, user_id: str = None, model_id: int = None):
     """
     文章生成异步任务
     """
@@ -28,15 +29,31 @@ def generate_article_task(self, task_id: str, outline_dict: dict, user_id: str =
             total_chunks = 0
             complete_content = ""
             
-            async for content_chunk in generate_article(state):
-                complete_content += content_chunk
-                total_chunks += 1
+            # 使用数据库会话获取 LLM 和提示词配置
+            async with AsyncSessionLocal() as session:
+                # 获取 LLM
+                llm = None
+                if model_id:
+                    llm = await LLMFactory.get_llm_by_id(session, model_id)
+                if not llm:
+                    # 尝试获取默认模型
+                    llm = await LLMFactory.get_default_llm(session)
                 
-                redis_stream_manager.write_content(task_id, content_chunk)
+                if not llm:
+                    mylog.error(f"[generate_article_task] 未找到可用的 LLM 模型")
+                    raise Exception("未找到可用的 LLM 模型，请先配置模型")
                 
-                if total_chunks % 10 == 0:
-                    progress = min(90, int(total_chunks / 100))
-                    redis_stream_manager.update_task_meta(task_id, "processing", progress)
+
+                
+                async for content_chunk in generate_article(state, llm=llm, db=session):
+                    complete_content += content_chunk
+                    total_chunks += 1
+                    
+                    redis_stream_manager.write_content(task_id, content_chunk)
+                    
+                    if total_chunks % 10 == 0:
+                        progress = min(90, int(total_chunks / 100))
+                        redis_stream_manager.update_task_meta(task_id, "processing", progress)
             
             redis_stream_manager.set_task_result(task_id, complete_content)
             redis_stream_manager.update_task_meta(task_id, "completed", 100)

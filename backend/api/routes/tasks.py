@@ -62,7 +62,7 @@ async def submit_generate_article_task(
         
         redis_stream_manager.update_task_meta(task_id, "pending", 0)
         
-        generate_article_task.delay(task_id, outline_dict, request.userId)
+        generate_article_task.delay(task_id, outline_dict, request.userId, request.modelId)
         
         return JSONResponse(
             status_code=200,

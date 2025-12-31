@@ -79,6 +79,9 @@ let lastType = 1;
 let renderTimer = null;
 let renderScheduled = false;
 let fullMarkdown = '';
+let lastScrollTop = 0;
+let isUserScrolling = false;
+let scrollTimeout = null;
 
 const scheduleRender = (immediate = false) => {
     const doRender = () => {
@@ -86,40 +89,31 @@ const scheduleRender = (immediate = false) => {
             const htmlContent = marked(fullMarkdown);
             content.value = htmlContent;
             if (aiEditor) {
+                // 记录当前滚动位置
+                const scrollContainer = editorContainerRef.value?.querySelector('.aieditor-content') 
+                    || editorContainerRef.value?.querySelector('.ProseMirror')
+                    || editorContainerRef.value?.querySelector('.ai-editor');
+                const prevScrollTop = scrollContainer?.scrollTop || 0;
+                const prevScrollHeight = scrollContainer?.scrollHeight || 0;
+                
                 if (aiEditor.setHtml) {
                     aiEditor.setHtml(htmlContent);
                 } else if (aiEditor.setContent) {
                     aiEditor.setContent(htmlContent);
                 }
-            }
-            if (autoFollowScroll.value) {
-                requestAnimationFrame(() => {
-                    try {
-                        // 优先用 AiEditor 内置的聚焦到末尾（会自动把光标滚动到视口）
-                        if (aiEditor && typeof aiEditor.focusEnd === 'function') {
-                            aiEditor.focusEnd();
-                            return;
-                        }
-                    } catch {}
-                    try {
-                        // 兜底：直接滚动容器到底部
-                        const candidates = [
-                            editorContainerRef.value,
-                            editorContainerRef.value?.querySelector('.ai-editor'),
-                            editorContainerRef.value?.querySelector('.aieditor-content'),
-                            editorContainerRef.value?.querySelector('.ProseMirror'),
-                            editorContainerRef.value?.firstElementChild,
-                        ].filter(Boolean);
-                        for (const el of candidates) {
-                            if (el && el.scrollHeight > el.clientHeight) {
-                                el.scrollTop = el.scrollHeight;
-                                const last = el.lastElementChild;
-                                if (last && last.scrollIntoView) last.scrollIntoView({ block: 'end' });
-                                break;
-                            }
-                        }
-                    } catch {}
-                });
+                
+                // 流式输出时平滑滚动到底部（仅当用户没有手动滚动时）
+                if (autoFollowScroll.value && !isUserScrolling && scrollContainer) {
+                    requestAnimationFrame(() => {
+                        try {
+                            // 使用平滑滚动，避免闪烁
+                            scrollContainer.scrollTo({
+                                top: scrollContainer.scrollHeight,
+                                behavior: 'auto' // 流式输出时用 auto 避免滞后
+                            });
+                        } catch {}
+                    });
+                }
             }
         } catch (e) {
             console.error('流式渲染失败:', e);
@@ -133,8 +127,19 @@ const scheduleRender = (immediate = false) => {
         doRender();
     } else if (!renderScheduled) {
         renderScheduled = true;
-        renderTimer = setTimeout(doRender, 120);
+        // 增加节流时间到 200ms，减少渲染频率
+        renderTimer = setTimeout(doRender, 200);
     }
+};
+
+// 检测用户滚动行为
+const handleUserScroll = () => {
+    isUserScrolling = true;
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    // 用户停止滚动 2 秒后恢复自动跟随
+    scrollTimeout = setTimeout(() => {
+        isUserScrolling = false;
+    }, 2000);
 };
 
 const emit = defineEmits(['requestComplete', 'requestError']);
@@ -198,6 +203,13 @@ onMounted(async () => {
                             }
                         }
                     });
+                    // 监听滚动，检测用户手动滚动行为
+                    const scrollTarget = editorElement.querySelector('.aieditor-content') 
+                        || editorElement.querySelector('.ProseMirror')
+                        || editorElement;
+                    if (scrollTarget) {
+                        scrollTarget.addEventListener('scroll', handleUserScroll, { passive: true });
+                    }
                 }
             }
         }
@@ -487,6 +499,28 @@ const createArticle = (templateTitleParam1) => {
             isCreate.value = false;
             if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
             renderScheduled = false;
+            
+            // 友好的错误提示
+            let errorMsg = '生成失败，请重试';
+            const errStr = String(err);
+            if (errStr.includes('504') || errStr.includes('Gateway Timeout')) {
+                errorMsg = 'AI服务响应超时，请稍后重试或选择其他模型';
+            } else if (errStr.includes('502') || errStr.includes('Bad Gateway')) {
+                errorMsg = 'AI服务暂时不可用，请稍后重试';
+            } else if (errStr.includes('500')) {
+                errorMsg = '服务器内部错误，请稍后重试';
+            } else if (errStr.includes('abort') || errStr.includes('AbortError')) {
+                errorMsg = '生成已取消';
+            } else if (errStr.includes('network') || errStr.includes('Network')) {
+                errorMsg = '网络连接失败，请检查网络后重试';
+            }
+            
+            ElMessage({
+                message: errorMsg,
+                type: 'error',
+                duration: 5000,
+            });
+            
             emit('requestError', err);
             throw err;
         },

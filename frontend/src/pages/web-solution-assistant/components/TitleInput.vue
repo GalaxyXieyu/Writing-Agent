@@ -93,7 +93,22 @@
             class="rounded-md border border-border bg-muted/30 p-4"
           >
             <div class="mb-4 flex items-center justify-between">
-              <Badge variant="secondary" class="bg-secondary text-secondary-foreground font-medium px-2.5 py-0.5 text-responsive-sm">二级标题</Badge>
+              <div class="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  @click="childrenItem.isSecondTitleClose = !childrenItem.isSecondTitleClose"
+                  class="h-6 w-6 rounded-md hover:bg-background"
+                >
+                  <svg v-if="!childrenItem.isSecondTitleClose" class="h-3.5 w-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                  </svg>
+                  <svg v-else class="h-3.5 w-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </Button>
+                <Badge variant="secondary" class="bg-secondary text-secondary-foreground font-medium px-2.5 py-0.5 text-responsive-sm">二级标题</Badge>
+              </div>
               <div class="flex items-center gap-1">
                 <Button 
                   variant="ghost" 
@@ -115,7 +130,7 @@
                 </Button>
               </div>
             </div>
-            <div class="space-y-4">
+            <div v-show="!childrenItem.isSecondTitleClose" class="space-y-4">
               <div class="space-y-2.5">
                 <Label class="text-responsive-xs font-medium text-foreground">标题名称</Label>
                 <Textarea
@@ -148,9 +163,8 @@
                 />
                 <p class="text-right text-responsive-xs text-muted-foreground">{{ childrenItem.referenceOutput?.length || 0 }}/5000</p>
               </div>
-            </div>
             
-            <!-- 三级标题列表 -->
+              <!-- 三级标题列表（在二级折叠区域内） -->
             <div v-if="childrenItem.children && childrenItem.children.length > 0" class="mt-4 space-y-3">
               <div 
                 v-for="(thirdLevelItem, thirdLevelIndex) in childrenItem.children" 
@@ -159,7 +173,22 @@
                 class="rounded-md border border-border bg-background p-4"
               >
                 <div class="mb-3 flex items-center justify-between">
-                  <Badge variant="outline" class="font-medium px-2 py-0.5 text-responsive-xs">三级标题</Badge>
+                  <div class="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      @click="thirdLevelItem.isThirdTitleClose = !thirdLevelItem.isThirdTitleClose"
+                      class="h-6 w-6 rounded-md hover:bg-background"
+                    >
+                      <svg v-if="!thirdLevelItem.isThirdTitleClose" class="h-3 w-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                      <svg v-else class="h-3 w-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </Button>
+                    <Badge variant="outline" class="font-medium px-2 py-0.5 text-responsive-xs">三级标题</Badge>
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="icon-sm" 
@@ -170,7 +199,7 @@
                     <img src="../iconPng/删除.png" alt="删除" class="h-3 w-3" />
                   </Button>
                 </div>
-                <div class="space-y-3">
+                <div v-show="!thirdLevelItem.isThirdTitleClose" class="space-y-3">
                   <div class="space-y-2">
                     <Label class="text-responsive-xs font-medium text-foreground">标题名称</Label>
                     <Textarea
@@ -205,6 +234,7 @@
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -260,6 +290,7 @@ const addFirstLevelTitle = () => {
     titleName: '',
     writingRequirement: '',
     referenceOutput: '',
+    isFirstTitleClose: false,
     children:[]
   });
 };
@@ -283,6 +314,7 @@ const addSecondLevelTitle = (item) => {
         titleName: '',
         writingRequirement: '',
         referenceOutput: '',
+        isSecondTitleClose: false,
         children: []
       });
     }
@@ -320,7 +352,8 @@ const addThirdLevelTitle = (item, secondLevelItem) => {
                       titleId: thirdTitleId,
                       titleName: '',
                       writingRequirement: '',
-                      referenceOutput: ''
+                      referenceOutput: '',
+                      isThirdTitleClose: false
                     });
                     console.log("三级标题已添加",props.titleData);
                 }

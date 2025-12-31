@@ -11,7 +11,7 @@ from models.solution import (
     GenerationResponse,
     TemplateData
 )
-from services.solution import generate_article, ChapterGenerationState
+from services.solution import generate_article, ChapterGenerationState, generate_chapter_content
 from ai.llm.llm_factory import LLMFactory
 from utils.logger import mylog
 from config import AsyncSessionLocal, get_async_db
@@ -75,17 +75,13 @@ async def generate_chapter_api(request: ChapterGenerationRequest, req: Request, 
 
     async def generate():
         # try:
-            async for content in generate_chapter(request.chapter, request.last_para_content, highest_level_title="", llm=llm, db=db):
+            async for content in generate_chapter_content(request.chapter, request.last_para_content, highest_level_title="", llm=llm, db=db):
                 yield format_sse(content)
                 await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
             yield format_sse("", is_end=True)
         # finally:
         #     request_in_progress[client_ip] = False
         #     mylog.info(f"请求完成: {client_ip}")
-    mylog.info("*"*100)
-    # mylog.info(f"开始生成章节: {client_ip}")
-    mylog.info(f"请求数据: {json.dumps(request.dict(), ensure_ascii=False, indent=2)}")
-    mylog.info("--------------------------------------------------")
     return StreamingResponse(
         generate(),
         media_type="text/event-stream; charset=utf-8",
@@ -120,10 +116,6 @@ async def generate_article_api(request: ArticleGenerationRequest,db: AsyncSessio
     #     raise HTTPException(status_code=429, detail="请求过于频繁: 上一个请求仍在进行中。")
     
     # request_in_progress[client_ip] = True
-    mylog.info("*"*100)
-    # 打印出入参的整体大纲
-    mylog.info(f"收到的大纲: {json.dumps(request.outline.dict(), ensure_ascii=False, indent=2)}")
-    mylog.info("--------------------------------------------------")
     if request.userId:               
         # 如果 request.outline 是 Pydantic 模型
         if hasattr(request.outline, 'dict'):
@@ -161,7 +153,6 @@ async def generate_article_api(request: ArticleGenerationRequest,db: AsyncSessio
     # 因为 Depends 的 session 会在路由函数返回时关闭，而 streaming 是在之后进行的
     
     async def generate():
-        mylog.info("[generate] 开始生成文章流...")
         async with AsyncSessionLocal() as session:
             try:
                 # 在生成器内部获取 LLM，确保 session 有效
@@ -171,14 +162,11 @@ async def generate_article_api(request: ArticleGenerationRequest,db: AsyncSessio
                     return
 
                 state = ChapterGenerationState(request.outline)
-                mylog.info(f"[generate] ChapterGenerationState 创建完成")
                 
                 async for content in generate_article(state, llm, db=session):
-                    mylog.info(f"[generate] 生成内容片段: {content[:50] if content else 'empty'}...")
                     yield format_sse(content)
-                    await asyncio.sleep(0)  # 给予事件循环处理其他任务的机会
+                    await asyncio.sleep(0)
                     
-                mylog.info("[generate] 生成完成，发送结束标记")
                 yield format_sse("", is_end=True)
             except Exception as e:
                 mylog.error(f"[generate] 生成过程中出错: {e}")
