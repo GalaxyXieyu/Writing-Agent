@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS ai_model_config (
   temperature VARCHAR(16) NULL,
   max_tokens INT NULL,
   is_default TINYINT(1) NOT NULL DEFAULT 0,
+  is_public TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否公开可见，1公开，0仅指定用户可见',
+  visible_to_users TEXT NULL COMMENT '可见用户ID列表，JSON数组格式',
   status_cd CHAR(1) NOT NULL DEFAULT 'Y',
   remark VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
